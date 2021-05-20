@@ -1,0 +1,12 @@
+apiVersion: cloud.google.com/v1beta1
+kind: BackendConfig
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+  {{- include "estafette-application.labels" . | nindent 4 }}
+spec:
+  iap:
+    enabled: true
+    oauthclientCredentials:
+      secretName: {{ .Release.Name }}-iap-oauth-credentials
+  timeoutSec: {{ .Values.backendConfigTimeout }}

@@ -1,0 +1,15 @@
+# Exclude files for git
+.DS_Store
+bin/*
+/**/.springBeans
+/**/.idea
+**/**/.classpath
+**/**/.eclipse
+**/**/target
+/**/.project
+/**/.settings
+/**/*.iml
+/**/coverage-buildCustomMetadataShouldThrowError.log
+/**/pom.xml.versionsBackup
+kubernetes.yaml
+*/build/**
