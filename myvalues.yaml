@@ -1,0 +1,4 @@
+ingress:
+  cloudflareHostnames:
+    - a
+    - b

@@ -70,31 +70,3 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
-
-{{/*
-Ingress properties depending on visibility
-*/}}
-{{- define "estafette-application.ingressVisibilityProperties" -}}
-{{ if eq "private" .visibility }}
-  {{- $_ := set . "useHTTPS" "true" -}}
-  {{- $_ := set . "serviceType" "ClusterIP" -}}
-  {{- $_ := set . "useNginxIngress" "true" -}}
-  {{- $_ := set . "useDNSAnnotationsOnIngress" "true" -}}
-  {{- $_ := set . "useCloudflareProxy" "true" -}}
-{{ else if eq "iap" .visibility }}
-  {{- $_ := set . "serviceType" "NodePort" -}}
-  {{- $_ := set . "useGCEIngress" "true" -}}
-  {{- $_ := set . "useDNSAnnotationsOnIngress" "true" -}}
-{{ else if eq "apigee" .visibility }}
-  {{- $_ := set . "serviceType" "ClusterIP" -}}
-  {{- $_ := set . "useDNSAnnotationsOnIngress" "true" -}}
-  {{- $_ := set . "useCloudflareProxy" "true" -}}
-{{ else if eq "esp" .visibility }}
-  {{- $_ := set . "serviceType" "ClusterIP" -}}
-  {{- $_ := set . "useDNSAnnotationsOnIngress" "true" -}}
-  {{- $_ := set . "useCloudflareProxy" "true" -}}
-{{ else }}
-  {{- printf "value %s for $.Values.ingress.visibility is not valid" .visibility | fail }}
-{{ end }}
-
-{{- end }}

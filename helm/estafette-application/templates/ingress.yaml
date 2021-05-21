@@ -1,4 +1,7 @@
-{{- $svcPort := .Values.service.port -}}
+{{- include "estafette-application.validateVisibility" . -}}
+{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
+{{- $visibilitiesWithIngress := list "private" "iap" "apigee" "public-whitelist" . -}}
+{{- if has $visibility $visibilitiesWithIngress -}}
 {{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1beta1
 {{- else -}}
@@ -10,42 +13,7 @@ metadata:
   labels:
     {{- include "estafette-application.labels" . | nindent 4 }}
   annotations:
-    {{- $visibility := $.Values.ingress.visibility | lower -}}
-    {{- $ingressProperties := dict "visibility" $visibility -}}
-    {{- include "estafette-application.ingressVisibilityProperties" $ingressProperties }}
-
-    {{- if $ingressProperties.useNginxIngress}}
-    kubernetes.io/ingress.class: "nginx-office"
-    {{- if $ingressProperties.useHTTPS }}
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-    nginx.ingress.kubernetes.io/proxy-ssl-verify: "on"
-    {{- end }}
-    {{- if $ingressProperties.allowHTTP }}
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    {{- end}}
-    nginx.ingress.kubernetes.io/client-body-buffer-size: "{{.nginxIngressClientBodyBufferSize}}"
-    nginx.ingress.kubernetes.io/proxy-body-size: "{{.nginxIngressProxyBodySize}}"
-    nginx.ingress.kubernetes.io/proxy-buffers-number: "{{.nginxIngressProxyBuffersNumber}}"
-    nginx.ingress.kubernetes.io/proxy-buffer-size: "{{.nginxIngressProxyBufferSize}}"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "{{.nginxIngressProxyConnectTimeout}}"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "{{.nginxIngressProxySendTimeout}}"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "{{.nginxIngressProxyReadTimeout}}"
-    {{- if $ingressProperties.overrideDefaultWhitelist}}
-    nginx.ingress.kubernetes.io/whitelist-source-range: "{{$ingressProperties.nginxIngressWhitelist}}"
-    {{- end}}
-    {{- if $ingressProperties.setsNginxIngressLoadBalanceAlgorithm }}
-    nginx.ingress.kubernetes.io/load-balance: "{{$ingressProperties.nginxIngressLoadBalanceAlgorithm}}"
-    {{- end }}
-    {{- end}}
-    {{- if $ingressProperties.useGCEIngress}}
-    kubernetes.io/ingress.class: "gce"
-    kubernetes.io/ingress.allow-http: "false"
-    {{- end}}
-    {{- if $ingressProperties.useDNSAnnotationsOnIngress}}
-    estafette.io/cloudflare-dns: "true"
-    estafette.io/cloudflare-proxy: "{{$ingressProperties.useCloudflareProxy}}"
-    estafette.io/cloudflare-hostnames: "{{$ingressProperties.hostsJoined}}"
-    {{- end}}
+    {{- include "estafette-application.ingressAnnotations" . | nindent 4  }}
 spec:
   {{- if .Values.ingress.tls }}
   tls:
@@ -66,6 +34,7 @@ spec:
           - path: {{ .path }}
             backend:
               serviceName: {{ .Release.Name }}
-              servicePort: {{ $svcPort }}
+              servicePort: {{ .Values.service.port }}
           {{- end }}
     {{- end }}
+{{- end}}
