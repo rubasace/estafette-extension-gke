@@ -70,3 +70,10 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Check if https is used on the container
+*/}}
+{{- define "estafette-application.usesHttps" -}}
+{{- or ($.Values.sidecars.openresty.enabled) (eq ($.Values.deployment.containerPort | int) 443 ) -}}
+{{- end }}

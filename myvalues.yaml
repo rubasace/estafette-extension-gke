@@ -1,4 +1,5 @@
+environment: "stg"
+
 ingress:
-  cloudflareHostnames:
-    - a
-    - b
+  visibility: private
+  apigeeAuthTlsSecret: "a/sadafaf"

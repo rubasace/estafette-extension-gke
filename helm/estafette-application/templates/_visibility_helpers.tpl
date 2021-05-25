@@ -24,67 +24,51 @@ Ingress properties depending on visibility
 {{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
 {{- if eq "private" $visibility -}}
 kubernetes.io/ingress.class: "nginx-office"
-{{- include "estafette-application.nginxIngressAnnotations" . }}
-{{ include "estafette-application.dnsIngressAnnotations" . }}
+{{- include "estafette-application.nginxCommonAnnotations" . }}
 {{- else if eq "iap" $visibility -}}
 {{- include "estafette-application.gceIngressAnnotations" . }}
-{{ include "estafette-application.dnsIngressAnnotations" . }}
 {{- else if eq "apigee" $visibility -}}
 kubernetes.io/ingress.class: "nginx-office"
-{{- include "estafette-application.nginxIngressAnnotations" . }}
-{{ include "estafette-application.dnsIngressAnnotations" . }}
+{{- include "estafette-application.nginxCommonAnnotations" . }}
 {{- else if eq "public-whitelist" $visibility -}}
 kubernetes.io/ingress.class: "nginx-office"
-{{- include "estafette-application.nginxIngressAnnotations" . }}
-{{ include "estafette-application.dnsIngressAnnotations" . }}
+{{- include "estafette-application.nginxCommonAnnotations" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Nginx common
+*/}}
+{{- define "estafette-application.nginxCommonAnnotations" -}}
+nginx.ingress.kubernetes.io/client-body-buffer-size: {{ .Values.ingress.nginxClientBodyBufferSize | quote }}
+nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.nginxProxyBodySize | quote }}
+nginx.ingress.kubernetes.io/proxy-buffers-number: {{ .Values.ingress.nginxProxyBuffersNumber | quote }}
+nginx.ingress.kubernetes.io/proxy-buffer-size: {{ .Values.ingress.nginxProxyBufferSize | quote }}
+nginx.ingress.kubernetes.io/proxy-connect-timeout: {{ .Values.ingress.nginxProxyConnectTimeout | quote }}
+nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.nginxProxySendTimeout | quote }}
+nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.nginxProxyReadTimeout | quote }}
+{{- if  $.Values.ingress.nginxLoadBalanceAlgorithm -}}
+nginx.ingress.kubernetes.io/load-balance: {{ $.Values.ingress.nginxLoadBalanceAlgorithm | quote}}
 {{- end }}
 {{- end }}
 
 {{/*
 Nginx annotations
 */}}
-{{- define "estafette-application.nginxIngressAnnotations" -}}
-{{- if or ($.Values.sidecars.openresty.enabled) (eq ($.Values.deployment.containerPort | int) 443 ) }}
+{{- define "estafette-application.nginxSslAnnotations" -}}
+{{- if eq (include "estafette-application.usesHttps" .) "true" -}}
 nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
 nginx.ingress.kubernetes.io/proxy-ssl-verify: "on"
 {{- end -}}
-{{/*TODO cannot be set for apigee*/}}
 {{- if $.Values.ingress.allowHTTP -}}
 nginx.ingress.kubernetes.io/ssl-redirect: "false"
 {{- end}}
-nginx.ingress.kubernetes.io/client-body-buffer-size: {{ .Values.ingress.nginxClientBodyBufferSize }}
-nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.nginxProxyBodySize }}
-nginx.ingress.kubernetes.io/proxy-buffers-number: {{ .Values.ingress.nginxProxyBuffersNumber }}
-nginx.ingress.kubernetes.io/proxy-buffer-size: {{ .Values.ingress.nginxProxyBufferSize }}
-nginx.ingress.kubernetes.io/proxy-connect-timeout: {{ .Values.ingress.nginxProxyConnectTimeout }}
-nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.nginxProxySendTimeout }}
-nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.nginxProxyReadTimeout }}
-{{/*TODO check if mandatory for public-whitelist*/}}
-{{- if $.Values.ingress.nginxWhitelistedIPS -}}
-nginx.ingress.kubernetes.io/whitelist-source-range: {{ $.Values.ingress.nginxWhitelistedIPS | join "," }}
-{{- end}}
-{{- if  $.Values.ingress.nginxLoadBalanceAlgorithm -}}
-nginx.ingress.kubernetes.io/load-balance: {{ $.Values.ingress.nginxLoadBalanceAlgorithm}}
-{{- end }}
 {{- end }}
 
 {{/*
 GCE annotations
 */}}
 {{- define "estafette-application.gceIngressAnnotations" -}}
-kubernetes.io/ingress.class: gce
-kubernetes.io/ingress.allow-http: false
-{{- end }}
-
-{{/*
-DNS annotations
-*/}}
-{{- define "estafette-application.dnsIngressAnnotations" -}}
-{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
-estafette.io/cloudflare-dns: true
-estafette.io/cloudflare-proxy: {{ ne $visibility "iap" }}
-{{- if not $.Values.ingress.cloudflareHostnames -}}
-{{ fail "At least one cloudflare hostname has to be provided" }}
-{{- end }}
-estafette.io/cloudflare-hostnames: "{{ $.Values.ingress.cloudflareHostnames | join "," }}"
+kubernetes.io/ingress.class: "gce"
+kubernetes.io/ingress.allow-http: "false"
 {{- end }}
