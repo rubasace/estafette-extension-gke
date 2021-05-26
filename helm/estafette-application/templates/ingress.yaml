@@ -1,8 +1,5 @@
-{{/* TODO move these validations away from charts (values.schema.json???) */}}
-{{- include "estafette-application.validateVisibility" . -}}
-{{/*  TODO end of validations that should be moved away*/}}
+{{- if eq (include "estafette-application.usesMainIngress" .) "true" -}}
 {{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
-{{- if has $visibility (list "private" "iap" "apigee" "public-whitelist") -}}
 {{- $hostnames := include "estafette-application.hostnames" . -}}
 {{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1beta1

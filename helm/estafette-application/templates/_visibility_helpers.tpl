@@ -72,3 +72,14 @@ GCE annotations
 kubernetes.io/ingress.class: "gce"
 kubernetes.io/ingress.allow-http: "false"
 {{- end }}
+
+{{/*
+Check if main ingress has to be rendered
+*/}}
+{{- define "estafette-application.usesMainIngress" -}}
+{{/* TODO move these validations away from charts (values.schema.json???) */}}
+{{- include "estafette-application.validateVisibility" . -}}
+{{/*  TODO end of validations that should be moved away*/}}
+{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
+{{- has $visibility (list "private" "iap" "apigee" "public-whitelist") -}}
+{{- end }}

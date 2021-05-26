@@ -13,7 +13,9 @@ Calculate the service port name
 Return hostnames
 */}}
 {{- define "estafette-application.hostnames" -}}
+{{- if eq (include "estafette-application.usesMainIngress" .) "true" -}}
 {{- ternary (list (printf "%s.%s.travix.com" $.Release.Name $.Values.environment)) $.Values.ingress.hosts ($.Values.ingress.hosts | empty) | join "," -}}
+{{- end }}
 {{- end }}
 {{/*
 

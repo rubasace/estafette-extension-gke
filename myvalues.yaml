@@ -1,5 +1,5 @@
 environment: "stg"
 
 ingress:
-  visibility: private
+  visibility: espv2
   apigeeAuthTlsSecret: "a/sadafaf"
