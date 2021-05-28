@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "estafette-application.selectorLabels" . | nindent 4 }}
+    {{- include "estafette-application.appSelectorLabels" . | nindent 4 }}

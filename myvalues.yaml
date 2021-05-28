@@ -1,5 +1,11 @@
 environment: "stg"
 
+track: stable
+
 ingress:
-  visibility: espv2
+  visibility: apigee
   apigeeAuthTlsSecret: "a/sadafaf"
+
+autoscaling:
+  horizontal:
+    useHpaScaler: true

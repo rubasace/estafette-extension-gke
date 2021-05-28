@@ -47,4 +47,4 @@ spec:
           {{- else }}
           servicePort: web
           {{- end }}
-  {{- end}}
+{{- end}}

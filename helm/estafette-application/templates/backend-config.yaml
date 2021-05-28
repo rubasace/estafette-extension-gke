@@ -1,3 +1,5 @@
+{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
+{{- if eq $visibility "iap" -}}
 apiVersion: cloud.google.com/v1beta1
 kind: BackendConfig
 metadata:
@@ -9,4 +11,5 @@ spec:
     enabled: true
     oauthclientCredentials:
       secretName: {{ .Release.Name }}-iap-oauth-credentials
-  timeoutSec: {{ .Values.backendConfigTimeout }}
+  timeoutSec: {{ .Values.iapBackendConfigTimeout }}
+{{- end}}

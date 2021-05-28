@@ -1,0 +1,14 @@
+{{- if ne $.Values.track "canary" -}}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "estafette-application.nameWithTrack" . }}
+  labels:
+  {{- include "estafette-application.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+    {{- include "estafette-application.appSelectorLabels" . | nindent 6 }}
+    {{- include "estafette-application.trackSelectorLabel" . | nindent 6 }}
+  maxUnavailable: 1
+{{- end }}

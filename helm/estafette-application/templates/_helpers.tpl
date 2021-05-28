@@ -2,7 +2,7 @@
 Expand the name of the chart.
 */}}
 {{- define "estafette-application.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- default .Release.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
@@ -35,8 +35,8 @@ Common labels
 */}}
 {{- define "estafette-application.labels" -}}
 helm.sh/chart: {{ include "estafette-application.chart" . }}
-{{- include "estafette-application.selectorLabels" . -}}
-{{- include "estafette-application.estafetteLabels" . -}}
+{{- include "estafette-application.appSelectorLabels" . -}}
+{{- include "estafette-application.extraLabels" . -}}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -44,30 +44,30 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Selector labels
+App selector labels
 */}}
-{{- define "estafette-application.selectorLabels" }}
-app.kubernetes.io/name: {{ include "estafette-application.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+{{- define "estafette-application.appSelectorLabels" }}
+app: {{ include "estafette-application.name" . }}
+{{- if $.Values.atomicId -}}
+estafette.io/atomic-id: {{ $.Values.atomicId | quote }}
+{{- end }}
 {{- end }}
 
 {{/*
-Selector labels
+Estafette custom labels
 */}}
-{{- define "estafette-application.estafetteLabels" -}}
-{{- range $key, $value := .Values.labels }}
+{{- define "estafette-application.extraLabels" -}}
+{{- range $key, $value := .Values.extraLabels }}
 {{ $key }}: {{ $value }}
 {{- end}}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+App selector labels
 */}}
-{{- define "estafette-application.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "estafette-application.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "estafette-application.trackSelectorLabel" }}
+{{- if $.Values.track -}}
+track: {{ $.Values.track }}
 {{- end }}
 {{- end }}
 
@@ -76,4 +76,27 @@ Check if https is used on the container
 */}}
 {{- define "estafette-application.usesHttps" -}}
 {{- or ($.Values.sidecars.openresty.enabled) (eq ($.Values.deployment.containerPort | int) 443 ) -}}
+{{- end }}
+
+{{/*TODO revisit lables, it might need to take atomicId into account too?? */}}
+{{/*
+Generate default Hpa prometheus query
+*/}}
+{{- define "estafette-application.defaultHpaPromQuery" -}}
+{{- printf "sum(rate(nginx_http_requests_total{app=%s}[5m])) by (app)" (include "estafette-application.name" . | quote ) -}}
+{{- end }}
+
+{{/*
+Generate name with track for deployments and related manifests
+*/}}
+{{- define "estafette-application.nameWithTrack" -}}
+{{- if $.Values.atomicId -}}
+{{- $.Release.Name }}-{{ $.Values.atomicId -}}
+{{- else if eq $.Values.track "stable" -}}
+{{- $.Release.Name -}}-stable
+{{- else if eq $.Values.track "canary" -}}
+{{- $.Release.Name -}}-canary
+{{- else -}}
+{{- $.Release.Name -}}
+{{- end }}
 {{- end }}

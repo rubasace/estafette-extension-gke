@@ -23,7 +23,9 @@ Return hostnames
 Return internal hostnames
 */}}
 {{- define "estafette-application.internalHostnames" -}}
+{{- if $.Values.ingress.useInternalIngress -}}
 {{- ternary (list (printf "%s.%s.internal.travix.io" $.Release.Name $.Values.environment)) $.Values.ingress.internalHosts ($.Values.ingress.internalHosts | empty) | join "," -}}
+{{- end }}
 {{- end }}
 {{/*
 

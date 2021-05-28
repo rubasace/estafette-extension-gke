@@ -1,17 +1,23 @@
 #TODO have a look at values.schema.json
 #TODO support volume mounts
+#TODO revisit all labels
+#TODO revisit the managed-by label
+#TODO discuss need for namespace explicitely
 
 # Default values for estafette-application.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 #TODO revisit this to see how Estafette can provide them (CLI --set??)
-labels:
+extraLabels:
   a: "1.0"
 
-backendConfigTimeout: 30
+iapBackendConfigTimeout: 30
 #TODO make mandatory
 environment: ""
+#TODO validate values
+track: ""
+atomicId: ""
 
 ingress:
   visibility: private
@@ -26,6 +32,7 @@ ingress:
   nginxProxyConnectTimeout: "60"
   nginxProxySendTimeout: "60"
   nginxProxyReadTimeout: "60"
+  useInternalIngress: true
   #  TODO validate values (only certain supported ones)
   nginxLoadBalanceAlgorithm: ""
   nginxWhitelistedIPS: []
@@ -43,6 +50,24 @@ ingress:
 service:
   type: ClusterIP
   port: 80
+
+autoscaling:
+  horizontal:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    useHpaScaler: false
+    hpaScalerPromQuery: ""
+    hpaScalerRequestsPerReplica: 1
+#    TODO revisit this value
+    hpaScalerDelta: 0
+    hpaScalerScaleDownMaxRatio: 1
+  vertical:
+    enabled: false
+#    TODO validate possible values
+    updateMode: "Off"
 
 sidecars:
   openresty:
@@ -99,11 +124,6 @@ securityContext: { }
 # runAsUser: 1000
 
 
-
-track:
-
-
-
 resources: { }
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -116,12 +136,7 @@ resources: { }
 #   cpu: 100m
 #   memory: 128Mi
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
+
 
 nodeSelector: { }
 
