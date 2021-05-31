@@ -119,24 +119,6 @@ func (s *service) GetTemplates(params api.Params, includePodDisruptionBudget boo
 
 	hasImagePullSecret := params.ImagePullSecretUser != "" && params.ImagePullSecretPassword != ""
 
-	if hasImagePullSecret && params.Kind != api.KindConfig && params.Kind != api.KindConfigToFile {
-		templatesToMerge = append(templatesToMerge, []string{
-			"image-pull-secret.yaml",
-		}...)
-	}
-
-	if (params.Kind == api.KindDeployment || params.Kind == api.KindHeadlessDeployment) && params.Autoscale.Enabled != nil && *params.Autoscale.Enabled && params.StrategyType != "Recreate" && (params.Action == api.ActionDeploySimple || params.Action == api.ActionDeployStable || params.Action == api.ActionDiffSimple || params.Action == api.ActionDiffStable) {
-		templatesToMerge = append(templatesToMerge, "horizontalpodautoscaler.yaml")
-	}
-	if (params.Kind == api.KindDeployment || params.Kind == api.KindHeadlessDeployment) && params.VerticalPodAutoscaler.Enabled != nil && *params.VerticalPodAutoscaler.Enabled && (params.Action == api.ActionDeploySimple || params.Action == api.ActionDeployStable || params.Action == api.ActionDiffSimple || params.Action == api.ActionDiffStable) {
-		templatesToMerge = append(templatesToMerge, "verticalpodautoscaler.yaml")
-	}
-	if params.HasSecrets() {
-		templatesToMerge = append(templatesToMerge, "application-secrets.yaml")
-	}
-	if params.UseGoogleCloudCredentials || params.LegacyGoogleCloudServiceAccountKeyFile != "" {
-		templatesToMerge = append(templatesToMerge, "service-account-secret.yaml")
-	}
 	if len(params.Configs.Files) > 0 || len(params.Configs.InlineFiles) > 0 {
 		templatesToMerge = append(templatesToMerge, "configmap.yaml")
 	}

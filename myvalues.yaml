@@ -9,3 +9,7 @@ ingress:
 autoscaling:
   horizontal:
     useHpaScaler: true
+
+googleCloudCredentials:
+  enabled: true
+  appName: superSeriousApp

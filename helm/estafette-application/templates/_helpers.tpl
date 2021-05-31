@@ -100,3 +100,26 @@ Generate name with track for deployments and related manifests
 {{- $.Release.Name -}}
 {{- end }}
 {{- end }}
+
+{{/*
+Generate name with track for deployments and related manifests
+*/}}
+{{- define "estafette-application.googleCloudCredentialsAppName" -}}
+{{- default $.Release.Name $.Values.googleCloudCredentials.appName }}
+{{- end }}
+
+{{/*
+Check if there are secrets to create
+*/}}
+{{- define "estafette-application.hasApplicationSecrets" -}}
+{{- or $.Values.secrets.data $.Values.deployment.secretEnvironmentVariables -}}
+{{- end }}
+
+{{/*
+Generate image pull secret .dockerconfigjson content
+*/}}
+{{- define "estafette-application.imagePullSecretCredentials" }}
+{{- with $.Values.imagePullSecret }}
+{{- printf "{\"auths\":{\"%s\":{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\",\"auth\":\"%s\"}}}" .registry .username .password .email (printf "%s:%s" .username .password | b64enc) | b64enc }}
+{{- end }}
+{{- end }}

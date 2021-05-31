@@ -143,21 +143,6 @@ func (s *service) GenerateTemplateData(params api.Params, currentReplicas int, g
 		RenderToYAML:        s.RenderToYAML,
 	}
 
-	if data.Secrets == nil {
-		data.Secrets = make(map[string]interface{}, 0)
-	}
-
-	// add SecretEnvironmentVariables to secrets map, but do base64 encode the values
-	for key, value := range params.Container.SecretEnvironmentVariables {
-		data.Secrets[key] = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%v", value)))
-	}
-	// add sidecar SecretEnvironmentVariables to secrets map, but do base64 encode the values
-	for _, sc := range params.Sidecars {
-		for key, value := range sc.SecretEnvironmentVariables {
-			data.Secrets[key] = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%v", value)))
-		}
-	}
-
 	if params.BackoffLimit != nil {
 		data.BackoffLimit = *params.BackoffLimit
 	}
