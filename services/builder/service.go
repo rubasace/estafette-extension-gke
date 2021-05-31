@@ -117,12 +117,6 @@ func (s *service) GetTemplates(params api.Params, includePodDisruptionBudget boo
 		}...)
 	}
 
-	hasImagePullSecret := params.ImagePullSecretUser != "" && params.ImagePullSecretPassword != ""
-
-	if len(params.Configs.Files) > 0 || len(params.Configs.InlineFiles) > 0 {
-		templatesToMerge = append(templatesToMerge, "configmap.yaml")
-	}
-
 	// prefix all filenames with templates dir
 	for i, t := range templatesToMerge {
 		templatesToMerge[i] = fmt.Sprintf("/templates/%v", t)

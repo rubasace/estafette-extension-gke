@@ -8,7 +8,10 @@
 #TODO revisit the managed-by label
 #TODO discuss need for explicit namespace (maybe flag as Helm don't delete??)
 #TODO revisit app name (Release.name will collide when using canaries)
-
+#TODO support overriding of files??
+#TODO make configmap work with external directory once https://github.com/helm/helm/pull/8841 gets merged
+#TODO check if we can use newer versions of k8s hpa to use CPU and/or memory
+#TODO revisit version of ingress (spec has to change depending on version)
 
 
 #TODO revisit this to see how Estafette can provide them (CLI --set??)
