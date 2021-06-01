@@ -401,7 +401,7 @@ func (s *service) GenerateTemplateData(params api.Params, currentReplicas int, g
 		data.UseCloudflareProxy = true // For private ingress. For Apigee it is hard-coded to be false.
 		data.UseBackendConfigAnnotationOnService = false
 		data.UseNegAnnotationOnService = false
-		data.LimitTrustedIPRanges = false
+		data.LimitTrustedIPRangesLimitTrustedIPRanges = false
 		data.OverrideDefaultWhitelist = false
 		for _, h := range params.Hosts {
 			hparts := strings.Split(h, ".")

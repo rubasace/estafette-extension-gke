@@ -83,3 +83,49 @@ Check if main ingress has to be rendered
 {{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
 {{- has $visibility (list "private" "iap" "apigee" "public-whitelist") -}}
 {{- end }}
+
+{{/*
+Check if backend-config annotation has to be enabled on the service
+*/}}
+{{- define "estafette-application.usesBackendConfig" -}}
+{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
+{{- has $visibility (list "iap") -}}
+{{- end }}
+
+{{/*
+Check if access to service has to be restricted to certain IP ranges
+*/}}
+{{- define "estafette-application.limitsTrustedIPRanges" -}}
+{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
+{{- has $visibility (list "esp" "espv2" "public") -}}
+{{- end }}
+
+{{/*
+Check if prometheus probe has to be enabled by default
+*/}}
+{{- define "estafette-application.defaultUsePrometheusProbe" -}}
+{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
+{{- not (has $visibility (list "esp" "espv2")) -}}
+{{- end }}
+
+{{/*
+Check if prometheus probe has to be enabled by default
+*/}}
+{{- define "estafette-application.usesESP" -}}
+{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
+{{- has $visibility (list "esp" "espv2") -}}
+{{- end }}
+
+{{/*
+Decide the service type based on the selected visibility
+*/}}
+{{- define "estafette-application.serviceType" -}}
+{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
+{{- if eq "iap" $visibility -}}
+NodePort
+{{- else if has $visibility (list "esp" "espv2" "public") -}}
+LoadBalancer
+{{- else -}}
+ClusterIP
+{{- end }}
+{{- end }}

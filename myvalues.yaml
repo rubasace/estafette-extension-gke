@@ -3,8 +3,11 @@ environment: "stg"
 track: stable
 
 ingress:
-  visibility: apigee
+  visibility: private
+  iapOauthCredentialsClientID: "asdafaf"
+  iapOauthCredentialsClientSecret: "superSecret"
   apigeeAuthTlsSecret: "a/sadafaf"
+  useContainerNativeLoadBalancing: true
 
 autoscaling:
   horizontal:
@@ -13,3 +16,19 @@ autoscaling:
 googleCloudCredentials:
   enabled: true
   appName: superSeriousApp
+
+service:
+#  usePrometheusProbe: false
+  readiness:
+    path: /actuator/health
+  additionalServicePorts:
+    - name: abc
+      number: 8880
+      protocol: TCP
+
+deployment:
+  containerPort: 8080
+
+sidecars:
+  openresty:
+    enabled: false

@@ -35,8 +35,8 @@ Common labels
 */}}
 {{- define "estafette-application.labels" -}}
 helm.sh/chart: {{ include "estafette-application.chart" . }}
-{{- include "estafette-application.appSelectorLabels" . -}}
-{{- include "estafette-application.extraLabels" . -}}
+{{ include "estafette-application.appSelectorLabels" . }}
+{{ include "estafette-application.extraLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -46,9 +46,9 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 App selector labels
 */}}
-{{- define "estafette-application.appSelectorLabels" }}
+{{- define "estafette-application.appSelectorLabels" -}}
 app: {{ include "estafette-application.name" . }}
-{{- if $.Values.atomicId -}}
+{{- if $.Values.atomicId }}
 estafette.io/atomic-id: {{ $.Values.atomicId | quote }}
 {{- end }}
 {{- end }}
@@ -57,7 +57,7 @@ estafette.io/atomic-id: {{ $.Values.atomicId | quote }}
 Estafette custom labels
 */}}
 {{- define "estafette-application.extraLabels" -}}
-{{- range $key, $value := .Values.extraLabels }}
+{{- range $key, $value := .Values.extraLabels -}}
 {{ $key }}: {{ $value }}
 {{- end}}
 {{- end }}

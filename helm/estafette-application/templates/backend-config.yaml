@@ -1,5 +1,4 @@
-{{- $visibility := include "estafette-application.visibilityLowerCase" . -}}
-{{- if eq $visibility "iap" -}}
+{{- if eq (include "estafette-application.usesBackendConfig" .) "true" }}
 apiVersion: cloud.google.com/v1beta1
 kind: BackendConfig
 metadata:

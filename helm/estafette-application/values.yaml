@@ -1,6 +1,9 @@
 # Default values for estafette-application.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+#TODO add unit testing
+#TODO remove Travix hostnames from code
+#TODO use $.Capabilities.APIVersions.Has instead of `SemVerCompare`
 
 #TODO have a look at values.schema.json
 #TODO support volume mounts
@@ -12,6 +15,7 @@
 #TODO make configmap work with external directory once https://github.com/helm/helm/pull/8841 gets merged
 #TODO check if we can use newer versions of k8s hpa to use CPU and/or memory
 #TODO revisit version of ingress (spec has to change depending on version)
+#TODO revisit if certificate-secret.yaml has to concatenate $hostnames even when hostnames go to service (esp, espv2 and public visibilities)
 
 
 #TODO revisit this to see how Estafette can provide them (CLI --set??)
@@ -63,6 +67,7 @@ ingress:
   useInternalIngress: true
   #  TODO validate values (only certain supported ones)
   nginxLoadBalanceAlgorithm: ""
+#  TODO default whitelisted ips?? Only for public-whitelist???
   nginxWhitelistedIPS: []
   hosts: []
   internalHosts: []
@@ -74,10 +79,30 @@ ingress:
   internalPath: ""
   apigeeAuthTlsSecret: ""
   apigeAuthTlsVerifyDepth: 3
+#  TODO should container native load balancing be set to true by default?
+  useContainerNativeLoadBalancing: false
 
 service:
   type: ClusterIP
   port: 80
+  usePrometheusProbe: ""
+  trustedIpRanges: ["103.21.244.0/22",
+                    "103.22.200.0/22",
+                    "103.31.4.0/22",
+                    "104.16.0.0/12",
+                    "108.162.192.0/18",
+                    "131.0.72.0/22",
+                    "141.101.64.0/18",
+                    "162.158.0.0/15",
+                    "172.64.0.0/13",
+                    "173.245.48.0/20",
+                    "188.114.96.0/20",
+                    "190.93.240.0/20",
+                    "197.234.240.0/22",
+                    "198.41.128.0/17"]
+  additionalServicePorts: []
+  readiness:
+    path: /readiness
 
 autoscaling:
   horizontal:
