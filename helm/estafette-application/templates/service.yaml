@@ -48,10 +48,10 @@ spec:
     protocol: TCP
   {{- end}}
   {{- range .Values.service.additionalServicePorts}}
-  - name: {{ .name | required "Additional service port name is mandatory" }}
-    port: {{ .number  | required "Additional service port number is mandatory" }}
-    targetPort: {{ .name | required "Additional service port name is mandatory" }}
-    protocol: {{ .protocol  | required "Additional service port name is mandatory" }}
+  - name: {{ .name | required "Additional port name is mandatory" }}
+    port: {{ .number  | required "Additional port number is mandatory" }}
+    targetPort: {{ .name | required "Additional port name is mandatory" }}
+    protocol: {{ .protocol  | required "Additional port name is mandatory" }}
   {{- end}}
   selector:
-  {{- include "estafette-application.appSelectorLabels" . | nindent 4 }}
+  {{ include "estafette-application.appSelectorLabels" . | indent 4 }}

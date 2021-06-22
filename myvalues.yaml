@@ -21,14 +21,44 @@ service:
 #  usePrometheusProbe: false
   readiness:
     path: /actuator/health
-  additionalServicePorts:
+  additionalPorts:
     - name: abc
       number: 8880
       protocol: TCP
 
 deployment:
   containerPort: 8080
-
+  additionalContainerPorts:
+  - name: extra1
+    port: 3333
+  tolerations:
+    preferPreemptibles: true
+    useWindowsNodes: true
+    extraTolerations:
+      - key: "abc"
+        operator: "myTest"
+        value: "123"
+        effect: "NoSchedule"
+      - key: "123"
+        operator: "myTest"
+        value: "abc"
+        effect: "NoSchedule"
+  initContainers:
+    - name: init-myservice
+      image: busybox:1.28
+      command: [ 'sh', '-c', "until nslookup myservice.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done" ]
+    - name: init-mydb
+      image: busybox:1.28
+      command: [ 'sh', '-c', "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done" ]
+  environmentVariables:
+    a: aValue
+    b: bValue
+  image: test
+  tag: latest
 sidecars:
   openresty:
     enabled: false
+
+secrets:
+  data:
+    a: 23

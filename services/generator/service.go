@@ -200,10 +200,7 @@ func (s *service) GenerateTemplateData(params api.Params, currentReplicas int, g
 	if data.PreferPreemptibles {
 		data.HasTolerations = true
 		data.Tolerations = append(data.Tolerations, &map[string]interface{}{
-			"key":      "cloud.google.com/gke-preemptible",
-			"operator": "Equal",
-			"value":    "true",
-			"effect":   "NoSchedule",
+,
 		})
 	}
 	if data.UseWindowsNodes {

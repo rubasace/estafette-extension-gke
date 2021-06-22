@@ -4,7 +4,9 @@
 #TODO add unit testing
 #TODO remove Travix hostnames from code
 #TODO use $.Capabilities.APIVersions.Has instead of `SemVerCompare`
+# TODO revisit .Release.Name usages, maybe replace by template estafette-application.name
 
+#TODO check if it can fail or warn on non-mapped values provided?
 #TODO have a look at values.schema.json
 #TODO support volume mounts
 #TODO revisit all labels
@@ -16,7 +18,7 @@
 #TODO check if we can use newer versions of k8s hpa to use CPU and/or memory
 #TODO revisit version of ingress (spec has to change depending on version)
 #TODO revisit if certificate-secret.yaml has to concatenate $hostnames even when hostnames go to service (esp, espv2 and public visibilities)
-
+# TODO revisit if sidecars default memory limit should match default memory request (better default for QoS assuming cpuLimit is provided)
 
 #TODO revisit this to see how Estafette can provide them (CLI --set??)
 extraLabels:
@@ -43,14 +45,56 @@ imagePullSecret:
 
 secrets:
   mountpath: /secrets
-  data: []
-
+  data: {}
 configmaps:
   mountpath: /configs
 
 deployment:
+  image: ""
+  tag: ""
+  imagePullPolicy: IfNotPresent
   containerPort: 5000
-  secretEnvironmentVariables: []
+  additionalContainerPorts: []
+  progressDeadlineSeconds: 600
+  strategyType: RollingUpdate
+  prometheusScrapeMetrics: true
+  prometheusScrapePath: /metrics
+  prometheusScrapePort: ""
+  rollingUpdateMaxSurge: "25%"
+  rollingUpdateMaxUnavailable: 0
+  enablePayloadLogging: false
+  tolerations:
+    preferPreemptibles: false
+    useWindowsNodes: false
+    extraTolerations: []
+  initContainers: []
+  environmentVariables: {}
+  secretEnvironmentVariables: {}
+  cpuRequest: ""
+  memoryRequest: ""
+  cpuLimit: ""
+  memoryLimit: ""
+  prestopSleepSeconds:
+  liveness:
+    enabled: true
+    path: "/liveness"
+    port: ""
+    initialDelaySeconds: 30
+    timeoutSeconds: 1
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+  readiness:
+#    TODO revisit if for headless readiness should be disabled
+    enabled: true
+    path: "/readiness"
+    port: ""
+#    TODO revisit if 0 is the valid value
+    initialDelaySeconds: 0
+    timeoutSeconds: 1
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
 
 ingress:
   visibility: private
@@ -125,6 +169,11 @@ autoscaling:
 sidecars:
   openresty:
     enabled: true
+    image: estafette/openresty-sidecar@sha256:2aa9f2c8c3f506e0f6cc70871701b5ac81aa0f12e8574c7b8213e4d0379d2ddd
+    cpuRequest:
+    memoryRequest:
+    cpuLimit:
+    memoryLimit:
   additionalSidecars: []
 
 
@@ -197,7 +246,5 @@ resources: { }
 
 
 nodeSelector: { }
-
-tolerations: [ ]
 
 affinity: { }

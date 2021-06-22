@@ -1,0 +1,524 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "estafette-application.nameWithTrack" . }}
+  labels:
+  {{- include "estafette-application.labels" . | nindent 4 }}
+spec:
+{{/*  TODO deal with replicas */}}
+  {{- if .IncludeReplicas}}
+  replicas: {{.Replicas}}
+  {{- end}}
+  progressDeadlineSeconds: {{ $.Values.deployment.progressDeadlineSeconds }}
+  strategy:
+    type: {{ .Values.deployment.strategyType }}
+    {{- if eq .Values.deployment.strategyType "RollingUpdate" }}
+    rollingUpdate:
+      maxSurge: {{ .Values.deployment.rollingUpdateMaxSurge }}
+      maxUnavailable: {{ .Values.deployment.rollingUpdateMaxUnavailable }}
+    {{- end}}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      {{- include "estafette-application.appSelectorLabels" . | nindent 6 }}
+      {{ include "estafette-application.trackSelectorLabel" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{/*        {{- range $key, $value := .PodLabels}}*/}}
+        {{ include "estafette-application.appSelectorLabels" . | nindent 8 }}
+        {{ include "estafette-application.trackSelectorLabel" . | nindent 8 }}
+        {{/*    TODO add pod labels?*/}}
+      annotations:
+        {{- if .Values.deployment.prometheusScrapeMetrics }}
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ .Values.deployment.prometheusScrapePath | quote }}
+        prometheus.io/port: {{ .Values.deployment.prometheusScrapePort | default .Values.deployment.containerPort | quote }}
+        prometheus.io/scrape-nginx-sidecar: {{ .Values.sidecars.openresty.enabled | quote }}
+        {{- end }}
+        {{- if .Values.deployment.enablePayloadLogging }}
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        {{- end}}
+    spec:
+      {{- $tolerations := include "estafette-application.tolerations" . -}}
+      {{- if $tolerations }}
+      tolerations: {{ $tolerations | indent 8 }}
+      {{- end}}
+      {{- if eq (include "estafette-application.hasImagePullSecret" .) "true" -}}
+      imagePullSecrets:
+      - name: {{ $.Release.Name }}-image-pull-secret
+      {{- end}}
+      serviceAccount: {{ $.Release.Name }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ include "estafette-application.name" . }}
+              topologyKey: kubernetes.io/hostname
+        {{- if or .Values.deployment.tolerations.useWindowsNodes .Values.deployment.tolerations.preferPreemptibles }}
+        nodeAffinity:
+          {{- if .Values.deployment.tolerations.useWindowsNodes}}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - windows
+          {{- end}}
+          {{- if .Values.deployment.tolerations.preferPreemptibles }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 10
+            preference:
+              matchExpressions:
+              - key: cloud.google.com/gke-preemptible
+                operator: In
+                values:
+                - "true"
+          {{- end}}
+        {{- end}}
+      {{- if .Values.deployment.initContainers }}
+      initContainers:
+{{ toYaml .Values.deployment.initContainers | indent 6 }}
+      {{- end }}
+      containers:
+      - name: {{ .Release.Name }}
+        image: {{ .Values.deployment.image | required "deployment image is mandatory" }}:{{ .Values.deployment.tag | required "deployment image tag is mandatory" }}
+        imagePullPolicy: {{ .Values.deployment.imagePullPolicy }}
+        env:
+        - name: "JAEGER_AGENT_HOST"
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: "JAEGER_SAMPLER_MANAGER_HOST_PORT"
+          value: "http://$(JAEGER_AGENT_HOST):5778/sampling"
+        {{- range $key, $value := .Values.deployment.environmentVariables }}
+        - name: {{ $key | quote }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- range $key, $value := .Values.deployment.secretEnvironmentVariables }}
+        - name: {{ $key | quote }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "estafette-application.nameWithTrack" . }}-secrets
+              key: {{ $key }}
+        {{- end }}
+        resources:
+          requests:
+            cpu: {{ .Values.deployment.cpuRequest | default .Values.deployment.cpuLimit | default "100m" }}
+            memory: {{ .Values.deployment.memoryRequest | default .Values.deployment.memoryLimit | default "128Mi" }}
+          limits:
+            {{- if  .Values.deployment.cpuLimit }}
+            cpu: {{ .Values.deployment.cpuLimit }}
+            {{- end }}
+            memory: {{ .Values.deployment.memoryLimit | default .Values.deployment.memoryRequest | default "128Mi"  }}
+        ports:
+        - name: web
+          containerPort: {{ .Values.deployment.containerPort }}
+        {{- range .Values.deployment.additionalContainerPorts }}
+        - name: {{ .name | required "additional port name is mandatory" }}
+          containerPort: {{ .port| required "additional port number is mandatory" }}
+          protocol: {{ .protocol| default "TCP" }}
+        {{- end}}
+        {{- if .Values.deployment.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.deployment.liveness.path}}
+            port: {{ .Values.deployment.liveness.port | default .Values.deployment.containerPort }}
+          initialDelaySeconds: {{ .Values.deployment.liveness.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.deployment.liveness.timeoutSeconds }}
+          periodSeconds: {{ .Values.deployment.liveness.periodSeconds }}
+          failureThreshold: {{ .Values.deployment.liveness.failureThreshold }}
+          successThreshold: {{ .Values.deployment.liveness.successThreshold }}
+        {{- end }}
+        {{- if .Values.deployment.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.deployment.readiness.path }}
+            port: {{ .Values.deployment.readiness.port | default .Values.deployment.containerPort }}
+          initialDelaySeconds: {{ .Values.deployment.readiness.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.deployment.readiness.timeoutSeconds }}
+          periodSeconds: {{ .Values.deployment.readiness.periodSeconds }}
+          failureThreshold: {{ .Values.deployment.readiness.failureThreshold }}
+          successThreshold: {{ .Values.deployment.readiness.successThreshold }}
+        {{- end }}
+        {{- if eq (include "estafette-application.hasVolumeMounts" .) "true" -}}
+{{/*        {{- if or .MountApplicationSecrets .MountConfigmap .MountServiceAccountSecret .MountPayloadLogging .MountAdditionalVolumes }}*/}}
+        volumeMounts:
+{{/*        {{- if .MountApplicationSecrets }}*/}}
+{{/*        - name: app-secrets*/}}
+{{/*          mountPath: {{.SecretMountPath}}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- if .MountConfigmap }}*/}}
+{{/*        - name: app-configs*/}}
+{{/*          mountPath: {{.ConfigMountPath}}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- if or .MountServiceAccountSecret }}*/}}
+{{/*        - name: gcp-service-account*/}}
+{{/*          mountPath: /gcp-service-account*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- if .MountPayloadLogging }}*/}}
+{{/*        - name: pod-log*/}}
+{{/*          mountPath: /var/log/travix*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- range .AdditionalVolumeMounts}}*/}}
+{{/*        - name: {{.Name}}*/}}
+{{/*          mountPath: {{.MountPath}}*/}}
+{{/*        {{- end}}*/}}
+        {{- end }}
+        {{- if .Values.deployment.prestopSleepSeconds }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sleep
+              - {{ .Values.deployment.prestopSleepSeconds }}s
+        {{- end}}
+        {{- if $.Values.sidecars.openresty.enabled -}}
+        {{- with $.Values.sidecars.openresty }}
+      - name: {{ $.Release.Name }}-openresty
+        image: {{ .image }}
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: {{ .cpuRequest | default .cpuLimit | default "50m" }}
+            memory: {{ .memoryRequest | default .memoryLimit | default "30Mi" }}
+          limits:
+            {{- if .cpuLimit }}
+            cpu: {{ .cpuLimit }}
+            {{- end }}
+            memory: {{ .memoryLimit | default .memoryRequest | default "50Mi" }}
+        ports:
+        - name: http
+          containerPort: 80
+        {{- if eq (include "estafette-application.usesESP" .) "true" }}
+        - name: https
+          containerPort: 443
+        {{- end}}
+        - name: nginx-liveness
+          containerPort: 82
+        - name: nginx-readiness
+          containerPort: 81
+        - name: nginx-prom
+          containerPort: 9101
+        env:
+        - name: "JAEGER_AGENT_HOST"
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: "JAEGER_SAMPLER_MANAGER_HOST_PORT"
+          value: "http://$(JAEGER_AGENT_HOST):5778/sampling"
+        - name: "OFFLOAD_TO_HOST"
+          value: "127.0.0.1"
+        - name: "OFFLOAD_TO_PORT"
+          value: {{ $.Values.deployment.containerPort | quote }}
+        - name: "SERVICE_NAME"
+          value: {{ $.Release.Name | quote }}
+        - name: "NAMESPACE"
+          value: {{ $.Release.Namespace | quote }}
+        - name: "HEALT_CHECK_PATH"
+          value: "{{index .SidecarSpecificProperties "healthcheckpath"}}"
+        - name: "GRACEFUL_SHUTDOWN_DELAY_SECONDS"
+          value: "{{$deployment.Container.PreStopSleepSeconds}}"
+        {{- if $deployment.AllowHTTP }}
+        - name: "ENFORCE_HTTPS"
+          value: "false"
+        {{- end}}
+        {{- range $key, $value := .EnvironmentVariables }}
+        - name: {{ $key | quote }}
+          {{- if (call $.IsSimpleEnvvarValue $value) }}
+          value: {{ $value | quote }}
+          {{- else }}
+{{(call $.RenderToYAML $value $) | indent 10}}
+          {{- end }}
+        {{- end }}
+        {{- range $key, $value := .SecretEnvironmentVariables }}
+        - name: {{ $key | quote }}
+          valueFrom:
+            secretKeyRef:
+              name: {{$deployment.NameWithTrack}}-secrets
+              key: {{ $key }}
+        {{- end }}
+        volumeMounts:
+        - name: ssl-certificate
+          mountPath: /etc/ssl/private
+        livenessProbe:
+          httpGet:
+            path: /liveness
+            port: nginx-liveness
+          initialDelaySeconds: 15
+        readinessProbe:
+          httpGet:
+            path: {{$deployment.Container.Readiness.Path}}
+            {{- if not $deployment.UseESP }}
+            port: https
+            scheme: HTTPS
+            {{- else }}
+            port: http
+            {{- end}}
+          initialDelaySeconds: {{$deployment.Container.Readiness.InitialDelaySeconds}}
+          timeoutSeconds: {{$deployment.Container.Readiness.TimeoutSeconds}}
+          periodSeconds: {{$deployment.Container.Readiness.PeriodSeconds}}
+          failureThreshold: {{$deployment.Container.Readiness.FailureThreshold}}
+          successThreshold: {{$deployment.Container.Readiness.SuccessThreshold}}
+        {{- if .HasCustomProperties }}
+{{.CustomPropertiesYAML | indent 8}}
+        {{- end }}
+        {{- end }}
+{{/*        {{- else if eq .Type "esp" }}*/}}
+{{/*      - name: {{$deployment.Name}}-esp*/}}
+{{/*        image: {{.Image}}*/}}
+{{/*        imagePullPolicy: IfNotPresent*/}}
+{{/*        args: [*/}}
+{{/*          "--ssl_port", "8443",*/}}
+{{/*          "--backend", "127.0.0.1:80",*/}}
+{{/*          "--service", "{{$deployment.EspService}}",*/}}
+{{/*          "--service_account_key", "/gcp-service-account/service-account-key.json",*/}}
+{{/*          {{- if $deployment.HasEspConfigID }}*/}}
+{{/*          "--version","{{$deployment.EspConfigID}}"*/}}
+{{/*          {{- else }}*/}}
+{{/*          "--rollout_strategy", "managed"*/}}
+{{/*          {{- end }}*/}}
+{{/*        ]*/}}
+{{/*        resources:*/}}
+{{/*          requests:*/}}
+{{/*            cpu: {{.CPURequest}}*/}}
+{{/*            memory: {{.MemoryRequest}}*/}}
+{{/*          limits:*/}}
+{{/*            {{- if .CPULimit}}*/}}
+{{/*            cpu: {{.CPULimit}}*/}}
+{{/*            {{- end }}*/}}
+{{/*            memory: {{.MemoryLimit}}*/}}
+{{/*        ports:*/}}
+{{/*        - name: https*/}}
+{{/*          containerPort: 8443*/}}
+{{/*        - name: esp-status*/}}
+{{/*          containerPort: 8090*/}}
+{{/*        volumeMounts:*/}}
+{{/*        - name: ssl-certificate-esp*/}}
+{{/*          mountPath: /etc/nginx/ssl*/}}
+{{/*        - name: gcp-service-account*/}}
+{{/*          mountPath: /gcp-service-account*/}}
+{{/*        livenessProbe:*/}}
+{{/*          httpGet:*/}}
+{{/*            path: /healthz*/}}
+{{/*            port: esp-status*/}}
+{{/*          initialDelaySeconds: 15*/}}
+{{/*        lifecycle:*/}}
+{{/*          preStop:*/}}
+{{/*            exec:*/}}
+{{/*              command:*/}}
+{{/*              - /bin/sleep*/}}
+{{/*              - {{$deployment.Container.PreStopSleepSeconds}}s*/}}
+{{/*        {{- if .HasCustomProperties }}*/}}
+{{/*{{.CustomPropertiesYAML | indent 8}}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- else if eq .Type "espv2" }}*/}}
+{{/*      - name: {{$deployment.Name}}-esp*/}}
+{{/*        image: {{.Image}}*/}}
+{{/*        imagePullPolicy: IfNotPresent*/}}
+{{/*        args: [*/}}
+{{/*          "--listener_port=8443",*/}}
+{{/*          "--backend=http://127.0.0.1:80",*/}}
+{{/*          "--service={{$deployment.EspService}}",*/}}
+{{/*          "--service_account_key=/gcp-service-account/service-account-key.json",*/}}
+{{/*          "--ssl_server_cert_path=/etc/envoy/ssl",*/}}
+{{/*          "--http_request_timeout_s={{$deployment.EspRequestTimeout}}",*/}}
+{{/*          {{- if $deployment.HasEspConfigID }}*/}}
+{{/*          "--version={{$deployment.EspConfigID}}"*/}}
+{{/*          {{- else }}*/}}
+{{/*          "--rollout_strategy=managed"*/}}
+{{/*          {{- end }}*/}}
+{{/*        ]*/}}
+{{/*        resources:*/}}
+{{/*          requests:*/}}
+{{/*            cpu: {{.CPURequest}}*/}}
+{{/*            memory: {{.MemoryRequest}}*/}}
+{{/*          limits:*/}}
+{{/*            {{- if .CPULimit}}*/}}
+{{/*            cpu: {{.CPULimit}}*/}}
+{{/*            {{- end }}*/}}
+{{/*            memory: {{.MemoryLimit}}*/}}
+{{/*        ports:*/}}
+{{/*        - name: https*/}}
+{{/*          containerPort: 8443*/}}
+{{/*        - name: esp-status*/}}
+{{/*          containerPort: 8090*/}}
+{{/*        volumeMounts:*/}}
+{{/*        - name: ssl-certificate-esp*/}}
+{{/*          mountPath: /etc/envoy/ssl*/}}
+{{/*        - name: gcp-service-account*/}}
+{{/*          mountPath: /gcp-service-account*/}}
+{{/*        lifecycle:*/}}
+{{/*          preStop:*/}}
+{{/*            exec:*/}}
+{{/*              command:*/}}
+{{/*              - /bin/sleep*/}}
+{{/*              - {{$deployment.Container.PreStopSleepSeconds}}s*/}}
+{{/*        {{- if .HasCustomProperties }}*/}}
+{{/*{{.CustomPropertiesYAML | indent 8}}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- else if eq .Type "cloudsqlproxy" }}*/}}
+{{/*      - name: {{$deployment.Name}}-cloudsql-proxy*/}}
+{{/*        image: {{.Image}}*/}}
+{{/*        {{- if .HasEnvironmentVariables }}*/}}
+{{/*        env:*/}}
+{{/*        {{- range $key, $value := .EnvironmentVariables }}*/}}
+{{/*        - name: {{ $key | quote }}*/}}
+{{/*          {{- if (call $.IsSimpleEnvvarValue $value) }}*/}}
+{{/*          value: {{ $value | quote }}*/}}
+{{/*          {{- else }}*/}}
+{{/*{{(call $.RenderToYAML $value $) | indent 10}}*/}}
+{{/*          {{- end }}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- range $key, $value := .SecretEnvironmentVariables }}*/}}
+{{/*        - name: {{ $key | quote }}*/}}
+{{/*          valueFrom:*/}}
+{{/*            secretKeyRef:*/}}
+{{/*              name: {{$deployment.NameWithTrack}}-secrets*/}}
+{{/*              key: {{ $key }}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- end }}*/}}
+{{/*        resources:*/}}
+{{/*          requests:*/}}
+{{/*            cpu: {{.CPURequest}}*/}}
+{{/*            memory: {{.MemoryRequest}}*/}}
+{{/*          limits:*/}}
+{{/*            {{- if .CPULimit}}*/}}
+{{/*            cpu: {{.CPULimit}}*/}}
+{{/*            {{- end }}*/}}
+{{/*            memory: {{.MemoryLimit}}*/}}
+{{/*        command: ["/cloud_sql_proxy",*/}}
+{{/*                  "-instances={{ index .SidecarSpecificProperties "dbinstanceconnectionname" }}=tcp:{{ index .SidecarSpecificProperties "sqlproxyport" }}",*/}}
+{{/*                  "-credential_file=/gcp-service-account/service-account-key.json",*/}}
+{{/*                  "-term_timeout={{ index .SidecarSpecificProperties "sqlproxyterminationtimeoutseconds" }}s"]*/}}
+{{/*          {{- if or $deployment.MountServiceAccountSecret }}*/}}
+{{/*        volumeMounts:*/}}
+{{/*          - name: gcp-service-account*/}}
+{{/*            mountPath: /gcp-service-account*/}}
+{{/*          {{- end }}*/}}
+{{/*        {{- if .HasCustomProperties }}*/}}
+{{/*{{.CustomPropertiesYAML | indent 8}}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- else  }}*/}}
+{{/*      - name: {{$deployment.Name}}-{{.Type}}*/}}
+{{/*        image: {{.Image}}*/}}
+{{/*        {{- if .HasEnvironmentVariables }}*/}}
+{{/*        env:*/}}
+{{/*        {{- range $key, $value := .EnvironmentVariables }}*/}}
+{{/*        - name: {{ $key | quote }}*/}}
+{{/*          {{- if (call $.IsSimpleEnvvarValue $value) }}*/}}
+{{/*          value: {{ $value | quote }}*/}}
+{{/*          {{- else }}*/}}
+{{/*{{(call $.RenderToYAML $value $) | indent 10}}*/}}
+{{/*          {{- end }}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- range $key, $value := .SecretEnvironmentVariables }}*/}}
+{{/*        - name: {{ $key | quote }}*/}}
+{{/*          valueFrom:*/}}
+{{/*            secretKeyRef:*/}}
+{{/*              name: {{$deployment.NameWithTrack}}-secrets*/}}
+{{/*              key: {{ $key }}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- end }}*/}}
+{{/*        resources:*/}}
+{{/*          requests:*/}}
+{{/*            cpu: {{.CPURequest}}*/}}
+{{/*            memory: {{.MemoryRequest}}*/}}
+{{/*          limits:*/}}
+{{/*            {{- if .CPULimit}}*/}}
+{{/*            cpu: {{.CPULimit}}*/}}
+{{/*            {{- end }}*/}}
+{{/*            memory: {{.MemoryLimit}}*/}}
+{{/*        {{- if or $deployment.MountApplicationSecrets $deployment.MountConfigmap $deployment.MountServiceAccountSecret $deployment.MountAdditionalVolumes }}*/}}
+{{/*        volumeMounts:*/}}
+{{/*        {{- if $deployment.MountApplicationSecrets }}*/}}
+{{/*        - name: app-secrets*/}}
+{{/*          mountPath: {{$deployment.SecretMountPath}}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- if $deployment.MountConfigmap }}*/}}
+{{/*        - name: app-configs*/}}
+{{/*          mountPath: {{$deployment.ConfigMountPath}}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- if $deployment.MountServiceAccountSecret }}*/}}
+{{/*        - name: gcp-service-account*/}}
+{{/*          mountPath: /gcp-service-account*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- range $deployment.AdditionalVolumeMounts}}*/}}
+{{/*        - name: {{.Name}}*/}}
+{{/*          mountPath: {{.MountPath}}*/}}
+{{/*        {{- end}}*/}}
+{{/*        {{- end}}*/}}
+{{/*        {{- if .HasCustomProperties }}*/}}
+{{/*{{.CustomPropertiesYAML | indent 8}}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- end }}*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if .HasCustomSidecars }}*/}}
+{{/*{{(call $.ToYAML .CustomSidecars) | indent 6}}*/}}
+{{/*      {{- end}}*/}}
+{{/*      terminationGracePeriodSeconds: 300*/}}
+{{/*      {{- if .MountVolumes }}*/}}
+{{/*      volumes:*/}}
+{{/*      {{- if .MountSslCertificate }}*/}}
+{{/*      - name: ssl-certificate*/}}
+{{/*        secret:*/}}
+{{/*          {{- if .UseCertificateSecret }}*/}}
+{{/*          secretName: {{.CertificateSecretName}}*/}}
+{{/*          {{- else }}*/}}
+{{/*          secretName: {{.Name}}-letsencrypt-certificate*/}}
+{{/*          {{- end }}*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if .UseESP }}*/}}
+{{/*      - name: ssl-certificate-esp*/}}
+{{/*        secret:*/}}
+{{/*          {{- if .UseCertificateSecret }}*/}}
+{{/*          secretName: {{.CertificateSecretName}}*/}}
+{{/*          {{- else }}*/}}
+{{/*          secretName: {{.Name}}-letsencrypt-certificate*/}}
+{{/*          {{- end }}*/}}
+{{/*          items:*/}}
+{{/*          - key: ssl.crt*/}}
+{{/*            path: nginx.crt*/}}
+{{/*          - key: ssl.key*/}}
+{{/*            path: nginx.key*/}}
+{{/*          - key: ssl.crt*/}}
+{{/*            path: server.crt*/}}
+{{/*          - key: ssl.key*/}}
+{{/*            path: server.key*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if .MountApplicationSecrets }}*/}}
+{{/*      - name: app-secrets*/}}
+{{/*        secret:*/}}
+{{/*          secretName: {{.NameWithTrack}}-secrets*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if .MountConfigmap }}*/}}
+{{/*      - name: app-configs*/}}
+{{/*        configMap:*/}}
+{{/*          name: {{.NameWithTrack}}-configs*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if or .MountServiceAccountSecret }}*/}}
+{{/*      - name: gcp-service-account*/}}
+{{/*        secret:*/}}
+{{/*          secretName: {{.GoogleCloudCredentialsAppName}}-gcp-service-account*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if .MountPayloadLogging }}*/}}
+{{/*      - name: pod-log*/}}
+{{/*        hostPath:*/}}
+{{/*          path: /var/log/fluentd-payload-logger/{{.Name}}*/}}
+{{/*          type: DirectoryOrCreate*/}}
+{{/*      - name: var-log*/}}
+{{/*        hostPath:*/}}
+{{/*          path: /var/log*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- range .AdditionalVolumeMounts}}*/}}
+{{/*      - name: {{.Name}}*/}}
+{{/*{{.VolumeYAML | indent 8}}*/}}
+{{/*      {{- end}}*/}}
+{{/*      {{- end }}*/}}

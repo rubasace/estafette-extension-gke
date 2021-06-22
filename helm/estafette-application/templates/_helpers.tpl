@@ -116,6 +116,15 @@ Check if there are secrets to create
 {{- end }}
 
 {{/*
+Check if there are secrets to create
+*/}}
+{{- define "estafette-application.hasImagePullSecret" -}}
+{{- with .Values.imagePullSecret }}
+{{- and .registry .email .username .password -}}
+{{- end }}
+{{- end }}
+
+{{/*
 Generate image pull secret .dockerconfigjson content
 */}}
 {{- define "estafette-application.imagePullSecretCredentials" }}

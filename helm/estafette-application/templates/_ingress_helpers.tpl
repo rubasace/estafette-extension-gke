@@ -15,7 +15,6 @@ Return hostnames
 {{- define "estafette-application.hostnames" -}}
 {{- ternary (list (printf "%s.%s.travix.com" $.Release.Name $.Values.environment)) $.Values.ingress.hosts ($.Values.ingress.hosts | empty) | join "," -}}
 {{- end }}
-{{/*
 
 {{/*
 Return internal hostnames
@@ -25,7 +24,6 @@ Return internal hostnames
 {{- ternary (list (printf "%s.%s.internal.travix.io" $.Release.Name $.Values.environment)) $.Values.ingress.internalHosts ($.Values.ingress.internalHosts | empty) | join "," -}}
 {{- end }}
 {{- end }}
-{{/*
 
 {{/*
 Return apigee hostnames
@@ -36,7 +34,6 @@ Return apigee hostnames
 {{- ternary (list (printf "%s-apigee.%s.travix.com" $.Release.Name $.Values.environment)) $.Values.ingress.apigeeHosts ($.Values.ingress.apigeeHosts | empty) | join "," -}}
 {{- end }}
 {{- end }}
-{{/*
 
 Respect provided secretName for tls or, otherwise, provide default name
 */}}
