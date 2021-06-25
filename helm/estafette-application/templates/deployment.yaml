@@ -172,7 +172,7 @@ spec:
 {{/*          mountPath: {{.MountPath}}*/}}
 {{/*        {{- end}}*/}}
         {{- end }}
-        {{- if .Values.deployment.prestopSleepSeconds }}
+        {{- if eq (include "estafette-application.prestopSleepEnabledByDefault" .) "true" }}
         lifecycle:
           preStop:
             exec:
@@ -197,7 +197,7 @@ spec:
         ports:
         - name: http
           containerPort: 80
-        {{- if eq (include "estafette-application.usesESP" .) "true" }}
+        {{- if eq (include "estafette-application.usesESP" $) "true" }}
         - name: https
           containerPort: 443
         {{- end}}
@@ -223,28 +223,24 @@ spec:
         - name: "NAMESPACE"
           value: {{ $.Release.Namespace | quote }}
         - name: "HEALT_CHECK_PATH"
-          value: "{{index .SidecarSpecificProperties "healthcheckpath"}}"
+          value:  {{ .healthcheckpath | quote }}
         - name: "GRACEFUL_SHUTDOWN_DELAY_SECONDS"
-          value: "{{$deployment.Container.PreStopSleepSeconds}}"
-        {{- if $deployment.AllowHTTP }}
+          value: {{ $.Values.deployment.prestopSleepSeconds | quote }}
+        {{- if $.Values.ingress.allowHTTP }}
         - name: "ENFORCE_HTTPS"
           value: "false"
         {{- end}}
-        {{- range $key, $value := .EnvironmentVariables }}
+        {{- range $key, $value := .environmentVariables }}
         - name: {{ $key | quote }}
-          {{- if (call $.IsSimpleEnvvarValue $value) }}
           value: {{ $value | quote }}
-          {{- else }}
-{{(call $.RenderToYAML $value $) | indent 10}}
           {{- end }}
-        {{- end }}
-        {{- range $key, $value := .SecretEnvironmentVariables }}
+          {{- range $key, $value := .secretEnvironmentVariables }}
         - name: {{ $key | quote }}
           valueFrom:
             secretKeyRef:
-              name: {{$deployment.NameWithTrack}}-secrets
+              name: {{ include "estafette-application.nameWithTrack" . }}-secrets
               key: {{ $key }}
-        {{- end }}
+          {{- end }}
         volumeMounts:
         - name: ssl-certificate
           mountPath: /etc/ssl/private
@@ -255,157 +251,159 @@ spec:
           initialDelaySeconds: 15
         readinessProbe:
           httpGet:
-            path: {{$deployment.Container.Readiness.Path}}
-            {{- if not $deployment.UseESP }}
+            path: {{ $.Values.deployment.readiness.path}}
+            {{- if ne (include "estafette-application.usesESP" $) "true" }}
             port: https
             scheme: HTTPS
             {{- else }}
             port: http
             {{- end}}
-          initialDelaySeconds: {{$deployment.Container.Readiness.InitialDelaySeconds}}
-          timeoutSeconds: {{$deployment.Container.Readiness.TimeoutSeconds}}
-          periodSeconds: {{$deployment.Container.Readiness.PeriodSeconds}}
-          failureThreshold: {{$deployment.Container.Readiness.FailureThreshold}}
-          successThreshold: {{$deployment.Container.Readiness.SuccessThreshold}}
-        {{- if .HasCustomProperties }}
-{{.CustomPropertiesYAML | indent 8}}
+          initialDelaySeconds: {{ $.Values.deployment.readiness.initialDelaySeconds }}
+          timeoutSeconds: {{ $.Values.deployment.readiness.timeoutSeconds }}
+          periodSeconds: {{ $.Values.deployment.readiness.periodSeconds }}
+          failureThreshold: {{ $.Values.deployment.readiness.failureThreshold }}
+          successThreshold: {{ $.Values.deployment.readiness.successThreshold }}
+        {{- if .customProperties }}
+{{.customProperties | toYaml | indent 8}}
         {{- end }}
         {{- end }}
-{{/*        {{- else if eq .Type "esp" }}*/}}
-{{/*      - name: {{$deployment.Name}}-esp*/}}
-{{/*        image: {{.Image}}*/}}
-{{/*        imagePullPolicy: IfNotPresent*/}}
-{{/*        args: [*/}}
-{{/*          "--ssl_port", "8443",*/}}
-{{/*          "--backend", "127.0.0.1:80",*/}}
-{{/*          "--service", "{{$deployment.EspService}}",*/}}
-{{/*          "--service_account_key", "/gcp-service-account/service-account-key.json",*/}}
-{{/*          {{- if $deployment.HasEspConfigID }}*/}}
-{{/*          "--version","{{$deployment.EspConfigID}}"*/}}
-{{/*          {{- else }}*/}}
-{{/*          "--rollout_strategy", "managed"*/}}
-{{/*          {{- end }}*/}}
-{{/*        ]*/}}
-{{/*        resources:*/}}
-{{/*          requests:*/}}
-{{/*            cpu: {{.CPURequest}}*/}}
-{{/*            memory: {{.MemoryRequest}}*/}}
-{{/*          limits:*/}}
-{{/*            {{- if .CPULimit}}*/}}
-{{/*            cpu: {{.CPULimit}}*/}}
-{{/*            {{- end }}*/}}
-{{/*            memory: {{.MemoryLimit}}*/}}
-{{/*        ports:*/}}
-{{/*        - name: https*/}}
-{{/*          containerPort: 8443*/}}
-{{/*        - name: esp-status*/}}
-{{/*          containerPort: 8090*/}}
-{{/*        volumeMounts:*/}}
-{{/*        - name: ssl-certificate-esp*/}}
-{{/*          mountPath: /etc/nginx/ssl*/}}
-{{/*        - name: gcp-service-account*/}}
-{{/*          mountPath: /gcp-service-account*/}}
-{{/*        livenessProbe:*/}}
-{{/*          httpGet:*/}}
-{{/*            path: /healthz*/}}
-{{/*            port: esp-status*/}}
-{{/*          initialDelaySeconds: 15*/}}
-{{/*        lifecycle:*/}}
-{{/*          preStop:*/}}
-{{/*            exec:*/}}
-{{/*              command:*/}}
-{{/*              - /bin/sleep*/}}
-{{/*              - {{$deployment.Container.PreStopSleepSeconds}}s*/}}
-{{/*        {{- if .HasCustomProperties }}*/}}
-{{/*{{.CustomPropertiesYAML | indent 8}}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- else if eq .Type "espv2" }}*/}}
-{{/*      - name: {{$deployment.Name}}-esp*/}}
-{{/*        image: {{.Image}}*/}}
-{{/*        imagePullPolicy: IfNotPresent*/}}
-{{/*        args: [*/}}
-{{/*          "--listener_port=8443",*/}}
-{{/*          "--backend=http://127.0.0.1:80",*/}}
-{{/*          "--service={{$deployment.EspService}}",*/}}
-{{/*          "--service_account_key=/gcp-service-account/service-account-key.json",*/}}
-{{/*          "--ssl_server_cert_path=/etc/envoy/ssl",*/}}
-{{/*          "--http_request_timeout_s={{$deployment.EspRequestTimeout}}",*/}}
-{{/*          {{- if $deployment.HasEspConfigID }}*/}}
-{{/*          "--version={{$deployment.EspConfigID}}"*/}}
-{{/*          {{- else }}*/}}
-{{/*          "--rollout_strategy=managed"*/}}
-{{/*          {{- end }}*/}}
-{{/*        ]*/}}
-{{/*        resources:*/}}
-{{/*          requests:*/}}
-{{/*            cpu: {{.CPURequest}}*/}}
-{{/*            memory: {{.MemoryRequest}}*/}}
-{{/*          limits:*/}}
-{{/*            {{- if .CPULimit}}*/}}
-{{/*            cpu: {{.CPULimit}}*/}}
-{{/*            {{- end }}*/}}
-{{/*            memory: {{.MemoryLimit}}*/}}
-{{/*        ports:*/}}
-{{/*        - name: https*/}}
-{{/*          containerPort: 8443*/}}
-{{/*        - name: esp-status*/}}
-{{/*          containerPort: 8090*/}}
-{{/*        volumeMounts:*/}}
-{{/*        - name: ssl-certificate-esp*/}}
-{{/*          mountPath: /etc/envoy/ssl*/}}
-{{/*        - name: gcp-service-account*/}}
-{{/*          mountPath: /gcp-service-account*/}}
-{{/*        lifecycle:*/}}
-{{/*          preStop:*/}}
-{{/*            exec:*/}}
-{{/*              command:*/}}
-{{/*              - /bin/sleep*/}}
-{{/*              - {{$deployment.Container.PreStopSleepSeconds}}s*/}}
-{{/*        {{- if .HasCustomProperties }}*/}}
-{{/*{{.CustomPropertiesYAML | indent 8}}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- else if eq .Type "cloudsqlproxy" }}*/}}
-{{/*      - name: {{$deployment.Name}}-cloudsql-proxy*/}}
-{{/*        image: {{.Image}}*/}}
-{{/*        {{- if .HasEnvironmentVariables }}*/}}
-{{/*        env:*/}}
-{{/*        {{- range $key, $value := .EnvironmentVariables }}*/}}
-{{/*        - name: {{ $key | quote }}*/}}
-{{/*          {{- if (call $.IsSimpleEnvvarValue $value) }}*/}}
-{{/*          value: {{ $value | quote }}*/}}
-{{/*          {{- else }}*/}}
-{{/*{{(call $.RenderToYAML $value $) | indent 10}}*/}}
-{{/*          {{- end }}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- range $key, $value := .SecretEnvironmentVariables }}*/}}
-{{/*        - name: {{ $key | quote }}*/}}
-{{/*          valueFrom:*/}}
-{{/*            secretKeyRef:*/}}
-{{/*              name: {{$deployment.NameWithTrack}}-secrets*/}}
-{{/*              key: {{ $key }}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- end }}*/}}
-{{/*        resources:*/}}
-{{/*          requests:*/}}
-{{/*            cpu: {{.CPURequest}}*/}}
-{{/*            memory: {{.MemoryRequest}}*/}}
-{{/*          limits:*/}}
-{{/*            {{- if .CPULimit}}*/}}
-{{/*            cpu: {{.CPULimit}}*/}}
-{{/*            {{- end }}*/}}
-{{/*            memory: {{.MemoryLimit}}*/}}
-{{/*        command: ["/cloud_sql_proxy",*/}}
-{{/*                  "-instances={{ index .SidecarSpecificProperties "dbinstanceconnectionname" }}=tcp:{{ index .SidecarSpecificProperties "sqlproxyport" }}",*/}}
-{{/*                  "-credential_file=/gcp-service-account/service-account-key.json",*/}}
-{{/*                  "-term_timeout={{ index .SidecarSpecificProperties "sqlproxyterminationtimeoutseconds" }}s"]*/}}
-{{/*          {{- if or $deployment.MountServiceAccountSecret }}*/}}
-{{/*        volumeMounts:*/}}
-{{/*          - name: gcp-service-account*/}}
-{{/*            mountPath: /gcp-service-account*/}}
-{{/*          {{- end }}*/}}
-{{/*        {{- if .HasCustomProperties }}*/}}
-{{/*{{.CustomPropertiesYAML | indent 8}}*/}}
-{{/*        {{- end }}*/}}
+        {{- end }}
+        {{- if $.Values.sidecars.espv2.enabled | default (eq $.Values.ingress.visibility "espv2") }}
+        {{- with $.Values.sidecars.espv2 }}
+      - name: {{ $.Release.Name }}-esp*
+        image: {{ .image }}
+        imagePullPolicy: IfNotPresent
+        args: [
+          "--listener_port=8443",
+          "--backend=http://127.0.0.1:80",
+          "--service={{ index (include "estafette-application.hostnames" $ | splitList ",") 0 }}",
+          "--service_account_key=/gcp-service-account/service-account-key.json",
+          "--ssl_server_cert_path=/etc/envoy/ssl",
+          "--http_request_timeout_s= {{ .requestTimeout | default $.Values.ingress.defaultTimeoutSeconds }}",
+          {{- if .configId }}
+          "--version={{ .configId }}"
+          {{- else }}
+          "--rollout_strategy=managed"
+          {{- end }}
+        ]
+        resources:
+          requests:
+            cpu: {{ .cpuRequest | default .cpuLimit | default "50m" }}
+            memory: {{ .memoryRequest | default .memoryLimit | default "30Mi" }}
+          limits:
+            {{- if .cpuLimit }}
+            cpu: {{ .cpuLimit }}
+            {{- end }}
+            memory: {{ .memoryLimit | default .memoryRequest | default "50Mi" }}
+        ports:
+        - name: https
+          containerPort: 8443
+        - name: esp-status
+          containerPort: 8090
+        volumeMounts:
+        - name: ssl-certificate-esp
+          mountPath: /etc/envoy/ssl
+        - name: gcp-service-account
+          mountPath: /gcp-service-account
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sleep
+              - {{ $.Values.deployment.prestopSleepSeconds }}s
+        {{- if .customProperties }}
+        {{.customProperties | toYaml | indent 8}}
+        {{- end }}
+        {{- end }}
+        {{- else if $.Values.sidecars.esp.enabled | default (eq $.Values.ingress.visibility "esp") }}
+        {{- with $.Values.sidecars.esp }}
+      - name: {{ $.Release.Name }}-esp
+        image: {{ .image }}
+        imagePullPolicy: IfNotPresent
+        args: [
+          "--ssl_port", "8443",
+          "--backend", "127.0.0.1:80",
+          "--service={{ index (include "estafette-application.hostnames" $ | splitList ",") 0 }}",
+          "--service_account_key", "/gcp-service-account/service-account-key.json",
+          {{- if .configId }}
+          "--version","{{ .configId }}"
+          {{- else }}
+          "--rollout_strategy", "managed"
+          {{- end }}
+        ]
+        resources:
+          requests:
+            cpu: {{ .cpuRequest | default .cpuLimit | default "50m" }}
+            memory: {{ .memoryRequest | default .memoryLimit | default "30Mi" }}
+          limits:
+            {{- if .cpuLimit }}
+            cpu: {{ .cpuLimit }}
+            {{- end }}
+            memory: {{ .memoryLimit | default .memoryRequest | default "50Mi" }}
+        ports:
+        - name: https
+          containerPort: 8443
+        - name: esp-status
+          containerPort: 8090
+        volumeMounts:
+        - name: ssl-certificate-esp
+          mountPath: /etc/nginx/ssl
+        - name: gcp-service-account
+          mountPath: /gcp-service-account
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: esp-status
+          initialDelaySeconds: 15
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sleep
+              - {{ $.Values.deployment.prestopSleepSeconds }}s
+        {{- if .customProperties }}
+        {{.customProperties | toYaml | indent 8}}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if $.Values.sidecars.cloudsqlproxy.enabled }}
+        {{- with $.Values.sidecars.cloudsqlproxy }}
+      - name: {{ $.Release.Name}}-cloudsql-proxy
+        image: {{ .image }}
+        env:
+          {{- range $key, $value := .environmentVariables }}
+          - name: {{ $key | quote }}
+            value: {{ $value | quote }}
+            {{- end }}
+          {{- range $key, $value := .secretEnvironmentVariables }}
+          - name: {{ $key | quote }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "estafette-application.nameWithTrack" . }}-secrets
+                key: {{ $key }}
+        {{- end }}
+        resources:
+          requests:
+            cpu: {{ .cpuRequest | default .cpuLimit | default "50m" }}
+            memory: {{ .memoryRequest | default .memoryLimit | default "30Mi" }}
+          limits:
+            {{- if .cpuLimit }}
+            cpu: {{ .cpuLimit }}
+            {{- end }}
+            memory: {{ .memoryLimit | default .memoryRequest | default "50Mi" }}
+        command: ["/cloud_sql_proxy",
+                  "-instances={{ .dbinstanceconnectionname | required "the database instance connection name is mandatory" }}=tcp:{{ .sqlproxyport }}",
+                  "-credential_file=/gcp-service-account/service-account-key.json",
+                  "-term_timeout={{.sqlproxyterminationtimeoutseconds }}s"]
+          {{- if $.Values.googleCloudCredentials.enabled }}
+        volumeMounts:
+          - name: gcp-service-account
+            mountPath: /gcp-service-account
+          {{- end }}
+        {{- if .customProperties }}
+        {{.customProperties | toYaml | indent 8}}
+        {{- end }}
+        {{- end }}
 {{/*        {{- else  }}*/}}
 {{/*      - name: {{$deployment.Name}}-{{.Type}}*/}}
 {{/*        image: {{.Image}}*/}}
@@ -463,9 +461,9 @@ spec:
 {{/*      {{- if .HasCustomSidecars }}*/}}
 {{/*{{(call $.ToYAML .CustomSidecars) | indent 6}}*/}}
 {{/*      {{- end}}*/}}
-{{/*      terminationGracePeriodSeconds: 300*/}}
-{{/*      {{- if .MountVolumes }}*/}}
-{{/*      volumes:*/}}
+      terminationGracePeriodSeconds: 300
+      {{- if .MountVolumes }}
+      volumes:
 {{/*      {{- if .MountSslCertificate }}*/}}
 {{/*      - name: ssl-certificate*/}}
 {{/*        secret:*/}}
@@ -475,24 +473,24 @@ spec:
 {{/*          secretName: {{.Name}}-letsencrypt-certificate*/}}
 {{/*          {{- end }}*/}}
 {{/*      {{- end }}*/}}
-{{/*      {{- if .UseESP }}*/}}
-{{/*      - name: ssl-certificate-esp*/}}
-{{/*        secret:*/}}
+      {{- if eq (include "estafette-application.usesESP" .) "true" }}
+      - name: ssl-certificate-esp
+        secret:
 {{/*          {{- if .UseCertificateSecret }}*/}}
 {{/*          secretName: {{.CertificateSecretName}}*/}}
 {{/*          {{- else }}*/}}
 {{/*          secretName: {{.Name}}-letsencrypt-certificate*/}}
 {{/*          {{- end }}*/}}
-{{/*          items:*/}}
-{{/*          - key: ssl.crt*/}}
-{{/*            path: nginx.crt*/}}
-{{/*          - key: ssl.key*/}}
-{{/*            path: nginx.key*/}}
-{{/*          - key: ssl.crt*/}}
-{{/*            path: server.crt*/}}
-{{/*          - key: ssl.key*/}}
-{{/*            path: server.key*/}}
-{{/*      {{- end }}*/}}
+          items:
+          - key: ssl.crt
+            path: nginx.crt
+          - key: ssl.key
+            path: nginx.key
+          - key: ssl.crt
+            path: server.crt
+          - key: ssl.key
+            path: server.key
+      {{- end }}
 {{/*      {{- if .MountApplicationSecrets }}*/}}
 {{/*      - name: app-secrets*/}}
 {{/*        secret:*/}}
@@ -508,15 +506,15 @@ spec:
 {{/*        secret:*/}}
 {{/*          secretName: {{.GoogleCloudCredentialsAppName}}-gcp-service-account*/}}
 {{/*      {{- end }}*/}}
-{{/*      {{- if .MountPayloadLogging }}*/}}
-{{/*      - name: pod-log*/}}
-{{/*        hostPath:*/}}
-{{/*          path: /var/log/fluentd-payload-logger/{{.Name}}*/}}
-{{/*          type: DirectoryOrCreate*/}}
-{{/*      - name: var-log*/}}
-{{/*        hostPath:*/}}
-{{/*          path: /var/log*/}}
-{{/*      {{- end }}*/}}
+      {{- if .Values.deployment.enablePayloadLogging }}
+      - name: pod-log
+        hostPath:
+          path: /var/log/fluentd-payload-logger/{{.Name}}
+          type: DirectoryOrCreate
+      - name: var-log
+        hostPath:
+          path: /var/log
+      {{- end }}
 {{/*      {{- range .AdditionalVolumeMounts}}*/}}
 {{/*      - name: {{.Name}}*/}}
 {{/*{{.VolumeYAML | indent 8}}*/}}

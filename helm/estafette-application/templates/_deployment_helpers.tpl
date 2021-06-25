@@ -22,6 +22,13 @@ Process tolerations
 {{/*
 Calculate if the deployment has volume mounts
 */}}
+{{- define "estafette-application.prestopSleepEnabledByDefault" -}}
+{{ eq "linux" ($.Values.os | required "os is mandatory") }}
+{{- end }}
+
+{{/*
+Calculate if the deployment has volume mounts
+*/}}
 {{- define "estafette-application.hasVolumeMounts" -}}
 {{ or (eq (include "estafette-application.hasSecrets" . ) "true") .MountConfigmap .MountServiceAccountSecret .MountPayloadLogging .MountAdditionalVolumes }}
 {{- end }}

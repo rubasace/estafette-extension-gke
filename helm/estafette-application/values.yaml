@@ -24,6 +24,10 @@
 extraLabels:
   a: "1.0"
 
+os: ""
+
+#TODO should this be grouped?
+
 iapBackendConfigTimeout: 30
 #TODO make mandatory
 environment: ""
@@ -74,7 +78,8 @@ deployment:
   memoryRequest: ""
   cpuLimit: ""
   memoryLimit: ""
-  prestopSleepSeconds:
+  prestopSleep: ""
+  prestopSleepSeconds: 20
   liveness:
     enabled: true
     path: "/liveness"
@@ -99,15 +104,17 @@ deployment:
 ingress:
   visibility: private
   allowHTTP: false
+  defaultTimeoutSeconds: 60
   iapOauthCredentialsClientID: ""
   iapOauthCredentialsClientSecret: ""
   nginxClientBodyBufferSize: "8k"
   nginxProxyBodySize: "128m"
   nginxProxyBuffersNumber: 4
   nginxProxyBufferSize: "4k"
-  nginxProxyConnectTimeout: "60"
-  nginxProxySendTimeout: "60"
-  nginxProxyReadTimeout: "60"
+#  TODO should all defaults be 60 seconds??
+  nginxProxyConnectTimeout: ""
+  nginxProxySendTimeout: ""
+  nginxProxyReadTimeout: ""
   useInternalIngress: true
   #  TODO validate values (only certain supported ones)
   nginxLoadBalanceAlgorithm: ""
@@ -170,10 +177,48 @@ sidecars:
   openresty:
     enabled: true
     image: estafette/openresty-sidecar@sha256:2aa9f2c8c3f506e0f6cc70871701b5ac81aa0f12e8574c7b8213e4d0379d2ddd
-    cpuRequest:
-    memoryRequest:
-    cpuLimit:
-    memoryLimit:
+    cpuRequest: ""
+    memoryRequest: ""
+    cpuLimit: ""
+    memoryLimit: ""
+    healthcheckpath: /readiness
+    environmentVariables: {}
+    secretEnvironmentVariables: {}
+    customProperties: {}
+  esp:
+    enabled: ""
+    image: gcr.io/endpoints-release/endpoints-runtime:1.56.0
+    cpuRequest: ""
+    memoryRequest: ""
+    cpuLimit: ""
+    memoryLimit: ""
+    requestTimeout: ""
+    configId: ""
+    customProperties: {}
+
+  espv2:
+    enabled: ""
+    image: gcr.io/endpoints-release/endpoints-runtime:2.25.0
+    cpuRequest: ""
+    memoryRequest: ""
+    cpuLimit: ""
+    memoryLimit: ""
+    requestTimeout: ""
+    configId: ""
+    customProperties: {}
+  cloudsqlproxy:
+    enabled: ""
+    image: eu.gcr.io/cloudsql-docker/gce-proxy:1.21/0
+    cpuRequest: ""
+    memoryRequest: ""
+    cpuLimit: ""
+    memoryLimit: ""
+    dbinstanceconnectionname: ""
+    sqlproxyport: "5432"
+    sqlproxyterminationtimeoutseconds: "60"
+    environmentVariables: {}
+    secretEnvironmentVariables: {}
+    customProperties: {}
   additionalSidecars: []
 
 

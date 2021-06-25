@@ -2,8 +2,10 @@ environment: "stg"
 
 track: stable
 
+os: linux
+
 ingress:
-  visibility: private
+  visibility: esp
   iapOauthCredentialsClientID: "asdafaf"
   iapOauthCredentialsClientSecret: "superSecret"
   apigeeAuthTlsSecret: "a/sadafaf"
@@ -57,7 +59,8 @@ deployment:
   tag: latest
 sidecars:
   openresty:
-    enabled: false
+    customProperties:
+      whatever: abc
 
 secrets:
   data:

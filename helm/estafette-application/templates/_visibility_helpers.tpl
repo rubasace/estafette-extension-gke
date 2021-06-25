@@ -44,9 +44,9 @@ nginx.ingress.kubernetes.io/client-body-buffer-size: {{ .Values.ingress.nginxCli
 nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.nginxProxyBodySize | quote }}
 nginx.ingress.kubernetes.io/proxy-buffers-number: {{ .Values.ingress.nginxProxyBuffersNumber | quote }}
 nginx.ingress.kubernetes.io/proxy-buffer-size: {{ .Values.ingress.nginxProxyBufferSize | quote }}
-nginx.ingress.kubernetes.io/proxy-connect-timeout: {{ .Values.ingress.nginxProxyConnectTimeout | quote }}
-nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.nginxProxySendTimeout | quote }}
-nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.nginxProxyReadTimeout | quote }}
+nginx.ingress.kubernetes.io/proxy-connect-timeout: {{ .Values.ingress.nginxProxyConnectTimeout | default $.Values.ingress.defaultTimeoutSeconds | quote }}
+nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.nginxProxySendTimeout | default $.Values.ingress.defaultTimeoutSeconds  | quote }}
+nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.nginxProxyReadTimeout | default $.Values.ingress.defaultTimeoutSeconds  | quote }}
 {{- if  $.Values.ingress.nginxLoadBalanceAlgorithm -}}
 nginx.ingress.kubernetes.io/load-balance: {{ $.Values.ingress.nginxLoadBalanceAlgorithm | quote}}
 {{- end }}
