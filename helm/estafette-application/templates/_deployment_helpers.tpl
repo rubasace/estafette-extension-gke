@@ -26,18 +26,18 @@ Calculate if the deployment has volume mounts
 {{ eq "linux" ($.Values.os | required "os is mandatory") }}
 {{- end }}
 
-{{/*
-Calculate if the deployment has volume mounts
-*/}}
-{{- define "estafette-application.hasVolumeMounts" -}}
-{{ or (eq (include "estafette-application.hasSecrets" . ) "true") .MountConfigmap .MountServiceAccountSecret .MountPayloadLogging .MountAdditionalVolumes }}
-{{- end }}
-
-
 {{/* TODO take sidecars into account (params.go:707) */}}
 {{/*
 Calculate if the release has secrets
 */}}
 {{- define "estafette-application.hasSecrets" -}}
 {{ or $.Values.deployment.secretEnvironmentVariables $.Values.secrets.data }}
+{{- end }}
+
+{{/*TODO only return true for deployment*/}}
+{{/*
+Calculate if the release has secrets
+*/}}
+{{- define "estafette-application.hasSslCertificate" -}}
+"true"
 {{- end }}

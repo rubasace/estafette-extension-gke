@@ -148,8 +148,6 @@ spec:
           failureThreshold: {{ .Values.deployment.readiness.failureThreshold }}
           successThreshold: {{ .Values.deployment.readiness.successThreshold }}
         {{- end }}
-        {{- if eq (include "estafette-application.hasVolumeMounts" .) "true" -}}
-{{/*        {{- if or .MountApplicationSecrets .MountConfigmap .MountServiceAccountSecret .MountPayloadLogging .MountAdditionalVolumes }}*/}}
         volumeMounts:
 {{/*        {{- if .MountApplicationSecrets }}*/}}
 {{/*        - name: app-secrets*/}}
@@ -171,7 +169,6 @@ spec:
 {{/*        - name: {{.Name}}*/}}
 {{/*          mountPath: {{.MountPath}}*/}}
 {{/*        {{- end}}*/}}
-        {{- end }}
         {{- if eq (include "estafette-application.prestopSleepEnabledByDefault" .) "true" }}
         lifecycle:
           preStop:
@@ -404,83 +401,21 @@ spec:
         {{.customProperties | toYaml | indent 8}}
         {{- end }}
         {{- end }}
-{{/*        {{- else  }}*/}}
-{{/*      - name: {{$deployment.Name}}-{{.Type}}*/}}
-{{/*        image: {{.Image}}*/}}
-{{/*        {{- if .HasEnvironmentVariables }}*/}}
-{{/*        env:*/}}
-{{/*        {{- range $key, $value := .EnvironmentVariables }}*/}}
-{{/*        - name: {{ $key | quote }}*/}}
-{{/*          {{- if (call $.IsSimpleEnvvarValue $value) }}*/}}
-{{/*          value: {{ $value | quote }}*/}}
-{{/*          {{- else }}*/}}
-{{/*{{(call $.RenderToYAML $value $) | indent 10}}*/}}
-{{/*          {{- end }}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- range $key, $value := .SecretEnvironmentVariables }}*/}}
-{{/*        - name: {{ $key | quote }}*/}}
-{{/*          valueFrom:*/}}
-{{/*            secretKeyRef:*/}}
-{{/*              name: {{$deployment.NameWithTrack}}-secrets*/}}
-{{/*              key: {{ $key }}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- end }}*/}}
-{{/*        resources:*/}}
-{{/*          requests:*/}}
-{{/*            cpu: {{.CPURequest}}*/}}
-{{/*            memory: {{.MemoryRequest}}*/}}
-{{/*          limits:*/}}
-{{/*            {{- if .CPULimit}}*/}}
-{{/*            cpu: {{.CPULimit}}*/}}
-{{/*            {{- end }}*/}}
-{{/*            memory: {{.MemoryLimit}}*/}}
-{{/*        {{- if or $deployment.MountApplicationSecrets $deployment.MountConfigmap $deployment.MountServiceAccountSecret $deployment.MountAdditionalVolumes }}*/}}
-{{/*        volumeMounts:*/}}
-{{/*        {{- if $deployment.MountApplicationSecrets }}*/}}
-{{/*        - name: app-secrets*/}}
-{{/*          mountPath: {{$deployment.SecretMountPath}}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- if $deployment.MountConfigmap }}*/}}
-{{/*        - name: app-configs*/}}
-{{/*          mountPath: {{$deployment.ConfigMountPath}}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- if $deployment.MountServiceAccountSecret }}*/}}
-{{/*        - name: gcp-service-account*/}}
-{{/*          mountPath: /gcp-service-account*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- range $deployment.AdditionalVolumeMounts}}*/}}
-{{/*        - name: {{.Name}}*/}}
-{{/*          mountPath: {{.MountPath}}*/}}
-{{/*        {{- end}}*/}}
-{{/*        {{- end}}*/}}
-{{/*        {{- if .HasCustomProperties }}*/}}
-{{/*{{.CustomPropertiesYAML | indent 8}}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- end }}*/}}
-{{/*      {{- end }}*/}}
-{{/*      {{- if .HasCustomSidecars }}*/}}
-{{/*{{(call $.ToYAML .CustomSidecars) | indent 6}}*/}}
-{{/*      {{- end}}*/}}
+        {{- end }}
+      {{- if $.Values.sidecars.additionalSidecars }}
+{{ $.Values.sidecars.additionalSidecars | toYaml | indent 6}}
+      {{- end}}
       terminationGracePeriodSeconds: 300
-      {{- if .MountVolumes }}
       volumes:
-{{/*      {{- if .MountSslCertificate }}*/}}
-{{/*      - name: ssl-certificate*/}}
-{{/*        secret:*/}}
-{{/*          {{- if .UseCertificateSecret }}*/}}
-{{/*          secretName: {{.CertificateSecretName}}*/}}
-{{/*          {{- else }}*/}}
-{{/*          secretName: {{.Name}}-letsencrypt-certificate*/}}
-{{/*          {{- end }}*/}}
-{{/*      {{- end }}*/}}
+      {{- if eq (include "estafette-application.hasSslCertificate" .) "true" }}
+      - name: ssl-certificate
+        secret:
+          secretName: {{ include "estafette-application.tlsCertificateSecretName" .}}
+      {{- end }}
       {{- if eq (include "estafette-application.usesESP" .) "true" }}
       - name: ssl-certificate-esp
         secret:
-{{/*          {{- if .UseCertificateSecret }}*/}}
-{{/*          secretName: {{.CertificateSecretName}}*/}}
-{{/*          {{- else }}*/}}
-{{/*          secretName: {{.Name}}-letsencrypt-certificate*/}}
-{{/*          {{- end }}*/}}
+          secretName: {{ include "estafette-application.tlsCertificateSecretName" .}}
           items:
           - key: ssl.crt
             path: nginx.crt
@@ -491,21 +426,22 @@ spec:
           - key: ssl.key
             path: server.key
       {{- end }}
-{{/*      {{- if .MountApplicationSecrets }}*/}}
-{{/*      - name: app-secrets*/}}
-{{/*        secret:*/}}
-{{/*          secretName: {{.NameWithTrack}}-secrets*/}}
-{{/*      {{- end }}*/}}
-{{/*      {{- if .MountConfigmap }}*/}}
-{{/*      - name: app-configs*/}}
-{{/*        configMap:*/}}
-{{/*          name: {{.NameWithTrack}}-configs*/}}
-{{/*      {{- end }}*/}}
-{{/*      {{- if or .MountServiceAccountSecret }}*/}}
-{{/*      - name: gcp-service-account*/}}
-{{/*        secret:*/}}
-{{/*          secretName: {{.GoogleCloudCredentialsAppName}}-gcp-service-account*/}}
-{{/*      {{- end }}*/}}
+      {{- if eq (include "estafette-application.hasApplicationSecrets" .) "true" -}}
+      - name: app-secrets
+        secret:
+          secretName: {{ include "estafette-application.nameWithTrack" . }}-secrets
+      {{- end }}
+{{/*      TODO  check if configmap exists- */}}
+      {{- if .MountConfigmap }}
+      - name: app-configs
+        configMap:
+          name:  {{ include "estafette-application.nameWithTrack" . }}-configs
+      {{- end }}
+      {{- if $.Values.googleCloudCredentials.enabled }}
+      - name: gcp-service-account
+        secret:
+          secretName: {{ include "estafette-application.googleCloudCredentialsAppName" . }}-gcp-service-account
+      {{- end }}
       {{- if .Values.deployment.enablePayloadLogging }}
       - name: pod-log
         hostPath:
@@ -515,8 +451,6 @@ spec:
         hostPath:
           path: /var/log
       {{- end }}
-{{/*      {{- range .AdditionalVolumeMounts}}*/}}
-{{/*      - name: {{.Name}}*/}}
-{{/*{{.VolumeYAML | indent 8}}*/}}
-{{/*      {{- end}}*/}}
-{{/*      {{- end }}*/}}
+      {{- range $key, $value :=  .Values.deployment.additionalVolumeMounts }}
+{{ $value | toYaml | indent 8}}
+      {{- end}}

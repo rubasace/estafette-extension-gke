@@ -5,7 +5,7 @@ track: stable
 os: linux
 
 ingress:
-  visibility: esp
+  visibility: private
   iapOauthCredentialsClientID: "asdafaf"
   iapOauthCredentialsClientSecret: "superSecret"
   apigeeAuthTlsSecret: "a/sadafaf"
@@ -61,6 +61,13 @@ sidecars:
   openresty:
     customProperties:
       whatever: abc
+  additionalSidecars:
+  - name: hello
+    image: busybox
+    command: [ 'sh', '-c', 'echo "Hello, Kubernetes!" && sleep 3600' ]
+  - name: hello
+    image: busybox
+    command: [ 'sh', '-c', 'echo "Hello, Kubernetes!" && sleep 3600' ]
 
 secrets:
   data:

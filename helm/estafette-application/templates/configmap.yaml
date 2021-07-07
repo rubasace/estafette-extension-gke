@@ -1,3 +1,5 @@
+{{/*TODO only create if some content*/}}
+{{/*  TODO process maps for key/value */}}
 apiVersion: v1
 kind: ConfigMap
 metadata:

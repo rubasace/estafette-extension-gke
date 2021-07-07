@@ -5,6 +5,7 @@
 #TODO remove Travix hostnames from code
 #TODO use $.Capabilities.APIVersions.Has instead of `SemVerCompare`
 # TODO revisit .Release.Name usages, maybe replace by template estafette-application.name
+#TODO revisit if removing .HasVolumeMounts for volumes is ok (worst case scenario we render empty volumes
 
 #TODO check if it can fail or warn on non-mapped values provided?
 #TODO have a look at values.schema.json
@@ -19,6 +20,7 @@
 #TODO revisit version of ingress (spec has to change depending on version)
 #TODO revisit if certificate-secret.yaml has to concatenate $hostnames even when hostnames go to service (esp, espv2 and public visibilities)
 # TODO revisit if sidecars default memory limit should match default memory request (better default for QoS assuming cpuLimit is provided)
+#TODO revisit if Istio should be supported
 
 #TODO revisit this to see how Estafette can provide them (CLI --set??)
 extraLabels:
@@ -100,6 +102,7 @@ deployment:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
+  additionalVolumeMounts: {}
 
 ingress:
   visibility: private
@@ -195,7 +198,6 @@ sidecars:
     requestTimeout: ""
     configId: ""
     customProperties: {}
-
   espv2:
     enabled: ""
     image: gcr.io/endpoints-release/endpoints-runtime:2.25.0
