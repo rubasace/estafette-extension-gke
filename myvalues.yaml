@@ -5,7 +5,7 @@ track: stable
 os: linux
 
 ingress:
-  visibility: private
+  visibility: esp
   iapOauthCredentialsClientID: "asdafaf"
   iapOauthCredentialsClientSecret: "superSecret"
   apigeeAuthTlsSecret: "a/sadafaf"
@@ -57,6 +57,14 @@ deployment:
     b: bValue
   image: test
   tag: latest
+  additionalVolumeMounts:
+    - name: ruben-volume
+      mountPath: /opt/ruben
+  additionalVolumes:
+    - name: ruben-volume
+      hostPath:
+        path: /var/ruben
+        type: DirectoryOrCreate
 sidecars:
   openresty:
     customProperties:
@@ -72,3 +80,9 @@ sidecars:
 secrets:
   data:
     a: 23
+configmaps:
+  data:
+    single: I only have one line
+    multi: |
+      I'm just a test
+      and I have many lines

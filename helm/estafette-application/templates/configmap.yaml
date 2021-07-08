@@ -1,5 +1,5 @@
-{{/*TODO only create if some content*/}}
-{{/*  TODO process maps for key/value */}}
+{{/*{{- if eq (include "estafette-application.hasConfigMaps" .) "true" }}*/}}
+{{- if or .Values.configmaps.data (.Files.Glob "externalFiles/configmaps/*") -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,4 +8,10 @@ metadata:
     {{- include "estafette-application.labels" . | nindent 4 }}
     type: application
 data:
+{{- if .Files.Glob "externalFiles/configmaps/*" }}
 {{ (.Files.Glob "externalFiles/configmaps/*").AsConfig | indent 2 }}
+{{- end }}
+{{- if .Values.configmaps.data  }}
+{{ .Values.configmaps.data | toYaml | indent 2 }}
+{{- end }}
+{{- end }}

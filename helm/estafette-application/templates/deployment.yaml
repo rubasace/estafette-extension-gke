@@ -149,26 +149,25 @@ spec:
           successThreshold: {{ .Values.deployment.readiness.successThreshold }}
         {{- end }}
         volumeMounts:
-{{/*        {{- if .MountApplicationSecrets }}*/}}
-{{/*        - name: app-secrets*/}}
-{{/*          mountPath: {{.SecretMountPath}}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- if .MountConfigmap }}*/}}
-{{/*        - name: app-configs*/}}
-{{/*          mountPath: {{.ConfigMountPath}}*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- if or .MountServiceAccountSecret }}*/}}
-{{/*        - name: gcp-service-account*/}}
-{{/*          mountPath: /gcp-service-account*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- if .MountPayloadLogging }}*/}}
-{{/*        - name: pod-log*/}}
-{{/*          mountPath: /var/log/travix*/}}
-{{/*        {{- end }}*/}}
-{{/*        {{- range .AdditionalVolumeMounts}}*/}}
-{{/*        - name: {{.Name}}*/}}
-{{/*          mountPath: {{.MountPath}}*/}}
-{{/*        {{- end}}*/}}
+          {{- if eq (include "estafette-application.hasApplicationSecrets" .) "true" -}}
+        - name: app-secrets
+          mountPath: {{ .Values.secrets.mountpath }}
+        {{- end }}
+        {{- if or .Values.configmaps.data (.Files.Glob "externalFiles/configmaps/*") }}
+        - name: app-configs
+          mountPath: {{ .Values.configmaps.mountpath }}
+        {{- end }}
+        {{- if $.Values.googleCloudCredentials.enabled }}
+        - name: gcp-service-account
+          mountPath: /gcp-service-account
+        {{- end }}
+        {{- if .Values.deployment.enablePayloadLogging }}
+        - name: pod-log
+          mountPath: /var/log/travix
+        {{- end }}
+        {{- if .Values.deployment.additionalVolumeMounts}}
+{{ .Values.deployment.additionalVolumeMounts | toYaml | indent 8}}
+        {{- end }}
         {{- if eq (include "estafette-application.prestopSleepEnabledByDefault" .) "true" }}
         lifecycle:
           preStop:
@@ -426,13 +425,12 @@ spec:
           - key: ssl.key
             path: server.key
       {{- end }}
-      {{- if eq (include "estafette-application.hasApplicationSecrets" .) "true" -}}
+      {{- if eq (include "estafette-application.hasApplicationSecrets" .) "true" }}
       - name: app-secrets
         secret:
           secretName: {{ include "estafette-application.nameWithTrack" . }}-secrets
       {{- end }}
-{{/*      TODO  check if configmap exists- */}}
-      {{- if .MountConfigmap }}
+      {{- if or .Values.configmaps.data (.Files.Glob "externalFiles/configmaps/*") }}
       - name: app-configs
         configMap:
           name:  {{ include "estafette-application.nameWithTrack" . }}-configs
@@ -445,12 +443,12 @@ spec:
       {{- if .Values.deployment.enablePayloadLogging }}
       - name: pod-log
         hostPath:
-          path: /var/log/fluentd-payload-logger/{{.Name}}
+          path: /var/log/fluentd-payload-logger/{{ .Release.Name }}
           type: DirectoryOrCreate
       - name: var-log
         hostPath:
           path: /var/log
       {{- end }}
-      {{- range $key, $value :=  .Values.deployment.additionalVolumeMounts }}
-{{ $value | toYaml | indent 8}}
-      {{- end}}
+  {{- if .Values.deployment.additionalVolumes}}
+{{ .Values.deployment.additionalVolumes | toYaml | indent 6}}
+  {{- end }}

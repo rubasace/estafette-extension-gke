@@ -39,5 +39,13 @@ Calculate if the release has secrets
 Calculate if the release has secrets
 */}}
 {{- define "estafette-application.hasSslCertificate" -}}
-"true"
+true
+{{- end }}
+
+{{/*TODO investigate why this doesn't work*/}}
+{{/*
+Calculate if the release has config maps
+*/}}
+{{- define "estafette-application.hasConfigMaps" -}}
+{{- or $.Values.configmaps.data ($.Files.Glob "externalFiles/configmaps/*") -}}
 {{- end }}
