@@ -1,5 +1,4 @@
-{{- if $.Values.autoscaling.horizontal.enabled -}}
-{{- if ne $.Values.track "canary" -}}
+{{- if eq (include "estafette-application.hasHpa" .) "true" -}}
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
@@ -22,5 +21,4 @@ spec:
   minReplicas: {{ $.Values.autoscaling.horizontal.minReplicas }}
   maxReplicas: {{ $.Values.autoscaling.horizontal.maxReplicas }}
   targetCPUUtilizationPercentage: {{ $.Values.autoscaling.horizontal.targetCPUUtilizationPercentage }}
-{{- end }}
 {{- end }}

@@ -1,4 +1,4 @@
-{{- if ne $.Values.track "canary" -}}
+{{- if ne $.Values.releaseData.track "canary" -}}
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:

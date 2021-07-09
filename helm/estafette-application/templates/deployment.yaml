@@ -5,9 +5,8 @@ metadata:
   labels:
   {{- include "estafette-application.labels" . | nindent 4 }}
 spec:
-{{/*  TODO deal with replicas */}}
-  {{- if .IncludeReplicas}}
-  replicas: {{.Replicas}}
+  {{- if eq (include "estafette-application.hasHpa" .) "false" }}
+  replicas: {{ .Values.deployment.replicas }}
   {{- end}}
   progressDeadlineSeconds: {{ $.Values.deployment.progressDeadlineSeconds }}
   strategy:
@@ -16,6 +15,7 @@ spec:
     rollingUpdate:
       maxSurge: {{ .Values.deployment.rollingUpdateMaxSurge }}
       maxUnavailable: {{ .Values.deployment.rollingUpdateMaxUnavailable }}
+
     {{- end}}
   revisionHistoryLimit: 10
   selector:
@@ -25,10 +25,8 @@ spec:
   template:
     metadata:
       labels:
-        {{/*        {{- range $key, $value := .PodLabels}}*/}}
-        {{ include "estafette-application.appSelectorLabels" . | nindent 8 }}
+        {{ include "estafette-application.labels" . | nindent 8 }}
         {{ include "estafette-application.trackSelectorLabel" . | nindent 8 }}
-        {{/*    TODO add pod labels?*/}}
       annotations:
         {{- if .Values.deployment.prometheusScrapeMetrics }}
         prometheus.io/scrape: "true"
@@ -44,7 +42,7 @@ spec:
       {{- if $tolerations }}
       tolerations: {{ $tolerations | indent 8 }}
       {{- end}}
-      {{- if eq (include "estafette-application.hasImagePullSecret" .) "true" -}}
+      {{- if eq (include "estafette-application.hasImagePullSecret" .) "true" }}
       imagePullSecrets:
       - name: {{ $.Release.Name }}-image-pull-secret
       {{- end}}
@@ -149,11 +147,11 @@ spec:
           successThreshold: {{ .Values.deployment.readiness.successThreshold }}
         {{- end }}
         volumeMounts:
-          {{- if eq (include "estafette-application.hasApplicationSecrets" .) "true" -}}
+          {{- if eq (include "estafette-application.hasApplicationSecrets" .) "true" }}
         - name: app-secrets
           mountPath: {{ .Values.secrets.mountpath }}
         {{- end }}
-        {{- if or .Values.configmaps.data (.Files.Glob "externalFiles/configmaps/*") }}
+        {{- if eq (include "estafette-application.hasConfigMaps" .) "true" }}
         - name: app-configs
           mountPath: {{ .Values.configmaps.mountpath }}
         {{- end }}
@@ -430,7 +428,7 @@ spec:
         secret:
           secretName: {{ include "estafette-application.nameWithTrack" . }}-secrets
       {{- end }}
-      {{- if or .Values.configmaps.data (.Files.Glob "externalFiles/configmaps/*") }}
+            {{- if eq (include "estafette-application.hasConfigMaps" .) "true" }}
       - name: app-configs
         configMap:
           name:  {{ include "estafette-application.nameWithTrack" . }}-configs

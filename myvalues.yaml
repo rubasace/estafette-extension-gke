@@ -3,6 +3,7 @@ environment: "stg"
 track: stable
 
 os: linux
+releaseService: estafette
 
 ingress:
   visibility: esp
@@ -13,7 +14,7 @@ ingress:
 
 autoscaling:
   horizontal:
-    useHpaScaler: true
+    enabled: false
 
 googleCloudCredentials:
   enabled: true
@@ -76,6 +77,13 @@ sidecars:
   - name: hello
     image: busybox
     command: [ 'sh', '-c', 'echo "Hello, Kubernetes!" && sleep 3600' ]
+
+
+imagePullSecret:
+  username: "u23"
+  password: "123"
+  email: "u23@123.com"
+  registry: "gcr.io"
 
 secrets:
   data:

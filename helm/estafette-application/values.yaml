@@ -1,6 +1,7 @@
 # Default values for estafette-application.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+
 # TODO move all names to dedicated template to centralize
 #TODO add unit testing
 #TODO remove Travix hostnames from code
@@ -13,7 +14,6 @@
 #TODO have a look at values.schema.json
 #TODO support volume mounts
 #TODO revisit all labels
-#TODO revisit the managed-by label
 #TODO discuss need for explicit namespace (maybe flag as Helm don't delete??)
 #TODO revisit app name (Release.name will collide when using canaries)
 #TODO support overriding of files??
@@ -30,13 +30,24 @@ extraLabels:
 
 os: ""
 
+
+
 #TODO should this be grouped?
 iapBackendConfigTimeout: 30
 #TODO make mandatory
 environment: ""
 #TODO validate values
-track: ""
-atomicId: ""
+
+releaseData:
+  releaseService: ""
+  track: ""
+  atomicId: ""
+  version: ""
+  releaseId: ""
+  triggeredBy: ""
+  gitRepository: ""
+  gitBranch: ""
+  gitRevision: ""
 
 googleCloudCredentials:
   enabled: false
@@ -60,6 +71,7 @@ configmaps:
 deployment:
   image: ""
   tag: ""
+  replicas: 3
   imagePullPolicy: IfNotPresent
   containerPort: 5000
   additionalContainerPorts: []
@@ -69,6 +81,7 @@ deployment:
   prometheusScrapePath: /metrics
   prometheusScrapePort: ""
   rollingUpdateMaxSurge: "25%"
+  # TODO check if this is ideal when having more than one replica
   rollingUpdateMaxUnavailable: 0
   enablePayloadLogging: false
   tolerations:

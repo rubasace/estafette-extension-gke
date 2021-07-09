@@ -1,5 +1,4 @@
-{{/*{{- if eq (include "estafette-application.hasConfigMaps" .) "true" }}*/}}
-{{- if or .Values.configmaps.data (.Files.Glob "externalFiles/configmaps/*") -}}
+{{- if eq (include "estafette-application.hasConfigMaps" .) "true" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

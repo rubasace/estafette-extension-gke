@@ -26,14 +26,6 @@ Calculate if the deployment has volume mounts
 {{ eq "linux" ($.Values.os | required "os is mandatory") }}
 {{- end }}
 
-{{/* TODO take sidecars into account (params.go:707) */}}
-{{/*
-Calculate if the release has secrets
-*/}}
-{{- define "estafette-application.hasSecrets" -}}
-{{ or $.Values.deployment.secretEnvironmentVariables $.Values.secrets.data }}
-{{- end }}
-
 {{/*TODO only return true for deployment*/}}
 {{/*
 Calculate if the release has secrets
@@ -42,10 +34,24 @@ Calculate if the release has secrets
 true
 {{- end }}
 
-{{/*TODO investigate why this doesn't work*/}}
 {{/*
 Calculate if the release has config maps
 */}}
 {{- define "estafette-application.hasConfigMaps" -}}
-{{- or $.Values.configmaps.data ($.Files.Glob "externalFiles/configmaps/*") -}}
+{{- if or $.Values.configmaps.data ($.Files.Glob "externalFiles/configmaps/*") -}}
+true
+{{- else -}}
+false
+{{- end }}
+{{- end }}
+
+{{/*
+Calculate if the release has config maps
+*/}}
+{{- define "estafette-application.hasHpa" -}}
+{{- if eq $.Values.releaseData.track "canary" -}}
+false
+{{- else -}}
+{{- $.Values.autoscaling.horizontal.enabled -}}
+{{- end }}
 {{- end }}

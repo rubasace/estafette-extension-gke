@@ -31,51 +31,14 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-Common labels
-*/}}
-{{- define "estafette-application.labels" -}}
-helm.sh/chart: {{ include "estafette-application.chart" . }}
-{{ include "estafette-application.appSelectorLabels" . }}
-{{ include "estafette-application.extraLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-App selector labels
-*/}}
-{{- define "estafette-application.appSelectorLabels" -}}
-app: {{ include "estafette-application.name" . }}
-{{- if $.Values.atomicId }}
-estafette.io/atomic-id: {{ $.Values.atomicId | quote }}
-{{- end }}
-{{- end }}
-
-{{/*
-Estafette custom labels
-*/}}
-{{- define "estafette-application.extraLabels" -}}
-{{- range $key, $value := .Values.extraLabels -}}
-{{ $key }}: {{ $value }}
-{{- end}}
-{{- end }}
-
-{{/*
-App selector labels
-*/}}
-{{- define "estafette-application.trackSelectorLabel" }}
-{{- if $.Values.track -}}
-track: {{ $.Values.track }}
-{{- end }}
-{{- end }}
-
-{{/*
 Check if https is used on the container
 */}}
 {{- define "estafette-application.usesHttps" -}}
-{{- or ($.Values.sidecars.openresty.enabled) (eq ($.Values.deployment.containerPort | int) 443 ) -}}
+{{- if or ($.Values.sidecars.openresty.enabled) (eq ($.Values.deployment.containerPort | int) 443 ) -}}
+true
+{{- else -}}
+false
+{{- end }}
 {{- end }}
 
 {{/*TODO revisit lables, it might need to take atomicId into account too?? */}}
@@ -90,11 +53,11 @@ Generate default Hpa prometheus query
 Generate name with track for deployments and related manifests
 */}}
 {{- define "estafette-application.nameWithTrack" -}}
-{{- if $.Values.atomicId -}}
-{{- $.Release.Name }}-{{ $.Values.atomicId -}}
-{{- else if eq $.Values.track "stable" -}}
+{{- if $.Values.releaseData.atomicId -}}
+{{- $.Release.Name }}-{{ $.Values.releaseData.atomicId -}}
+{{- else if eq $.Values.releaseData.track "stable" -}}
 {{- $.Release.Name -}}-stable
-{{- else if eq $.Values.track "canary" -}}
+{{- else if eq $.Values.releaseData.track "canary" -}}
 {{- $.Release.Name -}}-canary
 {{- else -}}
 {{- $.Release.Name -}}
@@ -112,15 +75,23 @@ Generate name with track for deployments and related manifests
 Check if there are secrets to create
 */}}
 {{- define "estafette-application.hasApplicationSecrets" -}}
-{{- or $.Values.secrets.data $.Values.deployment.secretEnvironmentVariables -}}
+{{- if or $.Values.secrets.data $.Values.deployment.secretEnvironmentVariables -}}
+true
+{{- else -}}
+false
+{{- end }}
 {{- end }}
 
 {{/*
 Check if there are secrets to create
 */}}
 {{- define "estafette-application.hasImagePullSecret" -}}
-{{- with .Values.imagePullSecret }}
-{{- and .registry .email .username .password -}}
+{{- with $.Values.imagePullSecret }}
+{{- if and .registry .email .username .password -}}
+true
+{{- else -}}
+false
+{{- end }}
 {{- end }}
 {{- end }}
 
